@@ -6,4 +6,9 @@ RCT_EXTERN_METHOD(triggerHaptic)
 RCT_EXTERN_METHOD(playWarningWithDucking)
 RCT_EXTERN_METHOD(restoreAudio)
 
++ (BOOL)requiresMainQueueSetup
+{
+  return YES;
+}
+
 @end

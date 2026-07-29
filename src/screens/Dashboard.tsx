@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, FlatList, Animated } from 'react-native';
 import { triggerAlert } from '../services/AlertService';
+import { startDetection, stopDetection } from '../services/ThreatDetector';
 
 interface DangerLog {
   id: string;
@@ -12,6 +13,7 @@ const Dashboard = () => {
   const [isActive, setIsActive] = useState(false);
   const [logs, setLogs] = useState<DangerLog[]>([]);
   const blinkAnim = useRef(new Animated.Value(1)).current;
+  const rmsThreshold = 0.15;
 
   useEffect(() => {
     if (isActive) {
@@ -46,7 +48,14 @@ const Dashboard = () => {
   };
 
   const handleToggle = () => {
-    setIsActive((prev) => !prev);
+    const newState = !isActive;
+    setIsActive(newState);
+    
+    if (newState) {
+      startDetection(addLog);
+    } else {
+      stopDetection();
+    }
   };
 
   const simulateThreat = () => {
@@ -57,8 +66,11 @@ const Dashboard = () => {
   return (
     <View className={`flex-1 px-6 pt-10 ${isActive ? 'bg-red-950' : 'bg-gray-900'}`}>
       <Text className="text-white text-3xl font-bold text-center mb-2">온음</Text>
-      <Text className="text-gray-400 text-sm text-center mb-10">
+      <Text className="text-gray-400 text-sm text-center mb-2">
         에어팟 사용자를 위한 위험음 감지
+      </Text>
+      <Text className="text-gray-500 text-xs text-center mb-8">
+        감지 임계값: RMS {rmsThreshold}
       </Text>
 
       <View className="items-center justify-center flex-1">

@@ -7,10 +7,6 @@ class AlertActionManager: NSObject {
   
   private var warningPlayer: AVAudioPlayer?
   
-  override static func requiresMainQueueSetup() -> Bool {
-    return true
-  }
-  
   @objc func triggerHaptic() {
     DispatchQueue.main.async {
       let generator = UINotificationFeedbackGenerator()
@@ -28,6 +24,8 @@ class AlertActionManager: NSObject {
         impactGenerator.prepare()
         impactGenerator.impactOccurred()
       }
+      
+      NSLog("[AlertActionManager] Haptic feedback triggered")
     }
   }
   
@@ -37,14 +35,21 @@ class AlertActionManager: NSObject {
       try session.setCategory(.playback, mode: .default, options: [.duckOthers])
       try session.setActive(true)
       
-      guard let url = Bundle.main.url(forResource: "warning_beep", withExtension: "mp3") else { return }
+      guard let url = Bundle.main.url(forResource: "warning_beep", withExtension: "mp3") else {
+        NSLog("[AlertActionManager] Warning beep file not found")
+        return
+      }
       
       warningPlayer = try AVAudioPlayer(contentsOf: url)
       warningPlayer?.volume = 1.0
       warningPlayer?.numberOfLoops = 0
       warningPlayer?.prepareToPlay()
       warningPlayer?.play()
-    } catch {}
+      
+      NSLog("[AlertActionManager] Warning beep played with ducking")
+    } catch {
+      NSLog("[AlertActionManager] Failed to play warning: \(error)")
+    }
   }
   
   @objc func restoreAudio() {
@@ -56,6 +61,9 @@ class AlertActionManager: NSObject {
       try session.setActive(false, options: .notifyOthersOnDeactivation)
       try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth, .mixWithOthers])
       try session.setActive(true)
-    } catch {}
+      NSLog("[AlertActionManager] Audio session restored")
+    } catch {
+      NSLog("[AlertActionManager] Failed to restore audio: \(error)")
+    }
   }
 }

@@ -6,30 +6,29 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
   var window: UIWindow?
 
-  func application(
-    _ application: UIApplication,
-    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
-  ) -> Bool {
-    let bridge = RCTBridge(delegate: self, launchOptions: launchOptions)
-    let rootView = RCTRootView(bridge: bridge!, moduleName: "OnEum", initialProperties: nil)
-    rootView.backgroundColor = UIColor(red: 0.1, green: 0.1, blue: 0.12, alpha: 1.0)
+  func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+    
+    let jsCodeLocation: URL
+    #if DEBUG
+      jsCodeLocation = RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: "index")
+    #else
+      jsCodeLocation = Bundle.main.url(forResource: "main", withExtension: "jsbundle")!
+    #endif
 
-    window = UIWindow(frame: UIScreen.main.bounds)
+    let rootView = RCTRootView(
+      bundleURL: jsCodeLocation,
+      moduleName: "OnEum",
+      initialProperties: nil,
+      launchOptions: launchOptions
+    )
+    
     let rootViewController = UIViewController()
     rootViewController.view = rootView
-    window?.rootViewController = rootViewController
-    window?.makeKeyAndVisible()
 
+    self.window = UIWindow(frame: UIScreen.main.bounds)
+    self.window?.rootViewController = rootViewController
+    self.window?.makeKeyAndVisible()
+    
     return true
-  }
-}
-
-extension AppDelegate: RCTBridgeDelegate {
-  func sourceURL(for bridge: RCTBridge!) -> URL! {
-#if DEBUG
-    return RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: "index")
-#else
-    return Bundle.main.url(forResource: "main", withExtension: "jsbundle")
-#endif
   }
 }
