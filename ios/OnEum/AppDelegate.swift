@@ -10,13 +10,22 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     
     let jsCodeLocation: URL
     #if DEBUG
-      jsCodeLocation = RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: "index")
+      if let bundleURL = RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: "index") {
+        jsCodeLocation = bundleURL
+      } else {
+        // Fallback to localhost if bundle provider fails
+        jsCodeLocation = URL(string: "http://localhost:8081/index.bundle?platform=ios")!
+      }
     #else
       if let bundleURL = Bundle.main.url(forResource: "main", withExtension: "jsbundle") {
         jsCodeLocation = bundleURL
       } else {
         // Fallback to development server if bundle not found
-        jsCodeLocation = RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: "index")
+        if let devURL = RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: "index") {
+          jsCodeLocation = devURL
+        } else {
+          jsCodeLocation = URL(string: "http://localhost:8081/index.bundle?platform=ios")!
+        }
       }
     #endif
 
