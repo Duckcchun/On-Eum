@@ -36,11 +36,27 @@ class AudioBufferManager: RCTEventEmitter {
     }
     
     let inputNode = engine.inputNode
-    let format = inputNode.outputFormat(forBus: 0)
+    let inputFormat = inputNode.outputFormat(forBus: 0)
     
-    let bufferSize: AVAudioFrameCount = AVAudioFrameCount(format.sampleRate * 0.1)
+    // Create a valid audio format for the tap
+    let sampleRate = inputFormat.sampleRate > 0 ? inputFormat.sampleRate : 44100.0
+    let channels = inputFormat.channelCount > 0 ? inputFormat.channelCount : 1
     
-    inputNode.installTap(onBus: 0, bufferSize: bufferSize, format: format) { [weak self] buffer, _ in
+    let format = AVAudioFormat(
+      commonFormat: .pcmFormatFloat32,
+      sampleRate: sampleRate,
+      channels: channels,
+      interleaved: false
+    )
+    
+    guard let validFormat = format else {
+      NSLog("[AudioBufferManager] Failed to create audio format")
+      return
+    }
+    
+    let bufferSize: AVAudioFrameCount = AVAudioFrameCount(sampleRate * 0.1)
+    
+    inputNode.installTap(onBus: 0, bufferSize: bufferSize, format: validFormat) { [weak self] buffer, _ in
       guard let self = self else { return }
       
       guard let channelData = buffer.floatChannelData?[0] else {
@@ -61,7 +77,7 @@ class AudioBufferManager: RCTEventEmitter {
       
       self.sendEvent(withName: "onAudioBuffer", body: [
         "rms": rms,
-        "sampleRate": format.sampleRate,
+        "sampleRate": validFormat.sampleRate,
         "frameLength": frameLength,
         "samples": bufferData.map { NSNumber(value: $0) }
       ])

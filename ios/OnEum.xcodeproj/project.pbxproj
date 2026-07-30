@@ -195,7 +195,8 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\n\nexport PROJECT_ROOT=/Users/SonDongMin/On-Eum\nexport ENTRY_FILE=index.js\n\ncd \"$PROJECT_ROOT\"\n\nWITH_ENVIRONMENT=\"$REACT_NATIVE_PATH/scripts/xcode/with-environment.sh\"\nREACT_NATIVE_XCODE=\"$REACT_NATIVE_PATH/scripts/react-native-xcode.sh\"\n\n/bin/sh -c \"\\\"$WITH_ENVIRONMENT\\\" \\\"$REACT_NATIVE_XCODE\\\"\"\n";
+			shellScript = "set -e\n\ncd /Users/SonDongMin/On-Eum\n\nexport NODE_BINARY=node\nexport RCT_METRO_PORT=8081\nexport ENTRY_FILE=index.js\n\nif [ \"$CONFIGURATION\" = \"Debug\" ]; then\n  echo \"Skipping bundle for Debug configuration (will use Metro)\"\n  exit 0\nfi\n\nif [ -z \"$RCT_METRO_PORT\" ]; then\n  RCT_METRO_PORT=8081\nfi\n\necho \"Bundling React Native code...\"\n\nnode node_modules/react-native/cli.js bundle --entry-file index.js --platform ios --dev false --bundle-output build/main.jsbundle --assets-dest build/\n";
+			workingDirectory = /Users/SonDongMin/On-Eum;
 		};
 		00EEFC60759A1932668264C0 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -205,13 +206,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-temp_rn/Pods-temp_rn-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-temp_rn/Pods-temp_rn-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -248,13 +245,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-temp_rn/Pods-temp_rn-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-temp_rn/Pods-temp_rn-resources-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -410,7 +403,10 @@
 					"-DFOLLY_CFG_NO_COROUTINES=1",
 					"-DFOLLY_HAVE_CLOCK_GETTIME=1",
 				);
-				OTHER_LDFLAGS = "$(inherited)  ";
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					" ",
+				);
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				USE_HERMES = true;
@@ -479,7 +475,10 @@
 					"-DFOLLY_CFG_NO_COROUTINES=1",
 					"-DFOLLY_HAVE_CLOCK_GETTIME=1",
 				);
-				OTHER_LDFLAGS = "$(inherited)  ";
+				OTHER_LDFLAGS = (
+					"$(inherited)",
+					" ",
+				);
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				USE_HERMES = true;

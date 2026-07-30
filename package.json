@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@react-native/metro-config": "^0.84.1",
+    "expo-linear-gradient": "^57.0.1",
     "nativewind": "^2.0.11",
     "react": "18.2.0",
     "react-native": "0.73.4",

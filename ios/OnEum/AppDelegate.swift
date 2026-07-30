@@ -12,7 +12,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     #if DEBUG
       jsCodeLocation = RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: "index")
     #else
-      jsCodeLocation = Bundle.main.url(forResource: "main", withExtension: "jsbundle")!
+      if let bundleURL = Bundle.main.url(forResource: "main", withExtension: "jsbundle") {
+        jsCodeLocation = bundleURL
+      } else {
+        // Fallback to development server if bundle not found
+        jsCodeLocation = RCTBundleURLProvider.sharedSettings().jsBundleURL(forBundleRoot: "index")
+      }
     #endif
 
     let rootView = RCTRootView(
