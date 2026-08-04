@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { View, Text, TouchableOpacity, FlatList, Animated, StyleSheet, Dimensions, Alert } from 'react-native';
 import { triggerAlert, updateAlertSettings } from '../services/AlertService';
 import { startDetection, stopDetection } from '../services/ThreatDetector';
@@ -91,7 +91,7 @@ const Dashboard = () => {
     }
   }, [isActive]);
 
-  const addLog = (type: string) => {
+  const addLog = useCallback((type: string) => {
     const newLog: DangerLog = {
       id: Date.now().toString(),
       type,
@@ -99,9 +99,9 @@ const Dashboard = () => {
     };
     setLogs((prev) => [newLog, ...prev]);
     setStats(prev => ({ ...prev, totalDetections: prev.totalDetections + 1 }));
-  };
+  }, []);
 
-  const handleToggle = () => {
+  const handleToggle = useCallback(() => {
     const newState = !isActive;
     setIsActive(newState);
     
@@ -110,17 +110,17 @@ const Dashboard = () => {
     } else {
       stopDetection();
     }
-  };
+  }, [isActive, settings, addLog]);
 
-  const handleSettingsChange = (newSettings: AppSettings) => {
+  const handleSettingsChange = useCallback((newSettings: AppSettings) => {
     setSettings(newSettings);
     updateAlertSettings({
       hapticEnabled: newSettings.hapticEnabled,
       audioEnabled: newSettings.audioEnabled,
     });
-  };
+  }, []);
 
-  const exportLogs = async () => {
+  const exportLogs = useCallback(async () => {
     try {
       if (logs.length === 0) {
         Alert.alert('내보내기 실패', '내보낼 로그가 없습니다.');
@@ -143,24 +143,24 @@ const Dashboard = () => {
       console.error('Error exporting logs:', error);
       Alert.alert('내보내기 실패', '로그 내보내기 중 오류가 발생했습니다.');
     }
-  };
+  }, [logs]);
 
-  const simulateThreat = () => {
+  const simulateThreat = useCallback(() => {
     addLog('킥보드 접근 감지');
     triggerAlert();
-  };
+  }, [addLog]);
 
-  const formatTime = (seconds: number) => {
+  const formatTime = useCallback((seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
+  }, []);
 
-  const statCards: StatCard[] = [
+  const statCards: StatCard[] = useMemo(() => [
     { title: '총 감지 횟수', value: stats.totalDetections.toString(), icon: '🚨' },
     { title: '활동 시간', value: formatTime(stats.activeTime), icon: '⏱️' },
     { title: '감지 임계값', value: settings.rmsThreshold.toString(), icon: '🎚️' },
-  ];
+  ], [stats.totalDetections, stats.activeTime, settings.rmsThreshold, formatTime]);
 
   if (showSettings) {
     return (
