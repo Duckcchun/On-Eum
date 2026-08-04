@@ -4,6 +4,20 @@ const { AlertActionManager } = NativeModules;
 
 const isIOS = Platform.OS === 'ios';
 
+interface AlertSettings {
+  hapticEnabled: boolean;
+  audioEnabled: boolean;
+}
+
+let currentSettings: AlertSettings = {
+  hapticEnabled: true,
+  audioEnabled: true,
+};
+
+export const updateAlertSettings = (settings: AlertSettings) => {
+  currentSettings = settings;
+};
+
 export const triggerAlert = () => {
   try {
     if (!isIOS || !AlertActionManager) {
@@ -11,16 +25,21 @@ export const triggerAlert = () => {
       return;
     }
 
-    AlertActionManager.triggerHaptic();
-    AlertActionManager.playWarningWithDucking();
+    if (currentSettings.hapticEnabled) {
+      AlertActionManager.triggerHaptic();
+    }
 
-    setTimeout(() => {
-      try {
-        AlertActionManager.restoreAudio();
-      } catch (error) {
-        console.error('[AlertService] Error restoring audio:', error);
-      }
-    }, 3000);
+    if (currentSettings.audioEnabled) {
+      AlertActionManager.playWarningWithDucking();
+
+      setTimeout(() => {
+        try {
+          AlertActionManager.restoreAudio();
+        } catch (error) {
+          console.error('[AlertService] Error restoring audio:', error);
+        }
+      }, 3000);
+    }
   } catch (error) {
     console.error('[AlertService] Error triggering alert:', error);
   }

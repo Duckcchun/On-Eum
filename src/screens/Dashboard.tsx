@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, FlatList, Animated, StyleSheet, Dimensions } from 'react-native';
-import { triggerAlert } from '../services/AlertService';
+import { View, Text, TouchableOpacity, FlatList, Animated, StyleSheet, Dimensions, Alert } from 'react-native';
+import { triggerAlert, updateAlertSettings } from '../services/AlertService';
 import { startDetection, stopDetection } from '../services/ThreatDetector';
+import Settings from './Settings';
+import RNFS from 'react-native-fs';
 
 const { width, height } = Dimensions.get('window');
 
@@ -17,13 +19,26 @@ interface StatCard {
   icon: string;
 }
 
+interface AppSettings {
+  rmsThreshold: number;
+  hapticEnabled: boolean;
+  audioEnabled: boolean;
+  sensitivity: 'low' | 'medium' | 'high';
+}
+
 const Dashboard = () => {
   const [isActive, setIsActive] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [logs, setLogs] = useState<DangerLog[]>([]);
   const [stats, setStats] = useState({ totalDetections: 0, activeTime: 0 });
+  const [settings, setSettings] = useState<AppSettings>({
+    rmsThreshold: 0.15,
+    hapticEnabled: true,
+    audioEnabled: true,
+    sensitivity: 'medium',
+  });
   const blinkAnim = useRef(new Animated.Value(1)).current;
   const pulseAnim = useRef(new Animated.Value(0)).current;
-  const rmsThreshold = 0.15;
 
   useEffect(() => {
     if (isActive) {
@@ -89,9 +104,42 @@ const Dashboard = () => {
     setIsActive(newState);
     
     if (newState) {
-      startDetection(addLog);
+      startDetection(addLog, settings);
     } else {
       stopDetection();
+    }
+  };
+
+  const handleSettingsChange = (newSettings: AppSettings) => {
+    setSettings(newSettings);
+    updateAlertSettings({
+      hapticEnabled: newSettings.hapticEnabled,
+      audioEnabled: newSettings.audioEnabled,
+    });
+  };
+
+  const exportLogs = async () => {
+    try {
+      if (logs.length === 0) {
+        Alert.alert('내보내기 실패', '내보낼 로그가 없습니다.');
+        return;
+      }
+
+      const csvHeader = 'ID,유형,시간\n';
+      const csvBody = logs.map(log => `${log.id},${log.type},${log.timestamp}`).join('\n');
+      const csvContent = csvHeader + csvBody;
+
+      const path = `${RNFS.DocumentDirectoryPath}/on_eum_logs_${Date.now()}.csv`;
+      await RNFS.writeFile(path, csvContent, 'utf8');
+
+      Alert.alert(
+        '내보내기 성공',
+        `로그가 저장되었습니다:\n${path}`,
+        [{ text: '확인' }]
+      );
+    } catch (error) {
+      console.error('Error exporting logs:', error);
+      Alert.alert('내보내기 실패', '로그 내보내기 중 오류가 발생했습니다.');
     }
   };
 
@@ -109,8 +157,17 @@ const Dashboard = () => {
   const statCards: StatCard[] = [
     { title: '총 감지 횟수', value: stats.totalDetections.toString(), icon: '🚨' },
     { title: '활동 시간', value: formatTime(stats.activeTime), icon: '⏱️' },
-    { title: '감지 임계값', value: rmsThreshold.toString(), icon: '🎚️' },
+    { title: '감지 임계값', value: settings.rmsThreshold.toString(), icon: '🎚️' },
   ];
+
+  if (showSettings) {
+    return (
+      <Settings
+        onBack={() => setShowSettings(false)}
+        onSettingsChange={handleSettingsChange}
+      />
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: '#0f172a' }]}>
@@ -122,8 +179,11 @@ const Dashboard = () => {
             <Text style={[styles.statusText, { color: isActive ? '#10B981' : '#9CA3AF' }]}>{isActive ? '감지 중' : '대기'}</Text>
           </View>
         </View>
-        <Text style={styles.subtitle}>에어팟 사용자를 위한 스마트 위험음 감지 시스템</Text>
+        <TouchableOpacity onPress={() => setShowSettings(true)} style={styles.settingsButton}>
+          <Text style={styles.settingsButtonText}>⚙️</Text>
+        </TouchableOpacity>
       </View>
+      <Text style={styles.subtitle}>에어팟 사용자를 위한 스마트 위험음 감지 시스템</Text>
 
       {/* Stats Cards */}
       <View style={styles.statsContainer}>
@@ -197,8 +257,15 @@ const Dashboard = () => {
       <View style={styles.logsContainer}>
         <View style={styles.logsHeader}>
           <Text style={styles.logsTitle}>최근 감지 로그</Text>
-          <View style={styles.logsBadge}>
-            <Text style={styles.logsBadgeText}>{logs.length}</Text>
+          <View style={styles.logsHeaderRight}>
+            <View style={styles.logsBadge}>
+              <Text style={styles.logsBadgeText}>{logs.length}</Text>
+            </View>
+            {logs.length > 0 && (
+              <TouchableOpacity onPress={exportLogs} style={styles.exportButton}>
+                <Text style={styles.exportButtonText}>내보내기</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
         <FlatList
@@ -242,6 +309,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 8,
+  },
+  settingsButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  settingsButtonText: {
+    fontSize: 20,
   },
   title: {
     fontSize: 36,
@@ -388,6 +466,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 16,
   },
+  logsHeaderRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   logsTitle: {
     fontSize: 18,
     fontWeight: '700',
@@ -398,11 +480,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
+    marginRight: 8,
   },
   logsBadgeText: {
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '700',
+  },
+  exportButton: {
+    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#10B981',
+  },
+  exportButtonText: {
+    color: '#10B981',
+    fontSize: 12,
+    fontWeight: '600',
   },
   logsList: {
     flex: 1,
