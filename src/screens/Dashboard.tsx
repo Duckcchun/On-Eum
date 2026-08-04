@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, FlatList, Animated, StyleSheet, Dimension
 import { triggerAlert, updateAlertSettings } from '../services/AlertService';
 import { startDetection, stopDetection } from '../services/ThreatDetector';
 import Settings from './Settings';
+import Statistics from './Statistics';
 import RNFS from 'react-native-fs';
 
 const { width, height } = Dimensions.get('window');
@@ -29,6 +30,7 @@ interface AppSettings {
 const Dashboard = () => {
   const [isActive, setIsActive] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showStatistics, setShowStatistics] = useState(false);
   const [logs, setLogs] = useState<DangerLog[]>([]);
   const [stats, setStats] = useState({ totalDetections: 0, activeTime: 0 });
   const [settings, setSettings] = useState<AppSettings>({
@@ -169,6 +171,17 @@ const Dashboard = () => {
     );
   }
 
+  if (showStatistics) {
+    return (
+      <Statistics
+        logs={logs}
+        totalDetections={stats.totalDetections}
+        activeTime={stats.activeTime}
+        onBack={() => setShowStatistics(false)}
+      />
+    );
+  }
+
   return (
     <View style={[styles.container, { backgroundColor: '#0f172a' }]}>
       {/* Header */}
@@ -179,9 +192,14 @@ const Dashboard = () => {
             <Text style={[styles.statusText, { color: isActive ? '#10B981' : '#9CA3AF' }]}>{isActive ? '감지 중' : '대기'}</Text>
           </View>
         </View>
-        <TouchableOpacity onPress={() => setShowSettings(true)} style={styles.settingsButton}>
-          <Text style={styles.settingsButtonText}>⚙️</Text>
-        </TouchableOpacity>
+        <View style={styles.headerButtons}>
+          <TouchableOpacity onPress={() => setShowStatistics(true)} style={styles.headerButton}>
+            <Text style={styles.headerButtonText}>📊</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setShowSettings(true)} style={styles.headerButton}>
+            <Text style={styles.headerButtonText}>⚙️</Text>
+          </TouchableOpacity>
+        </View>
       </View>
       <Text style={styles.subtitle}>에어팟 사용자를 위한 스마트 위험음 감지 시스템</Text>
 
@@ -310,7 +328,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 8,
   },
-  settingsButton: {
+  headerButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  headerButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -318,7 +340,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  settingsButtonText: {
+  headerButtonText: {
     fontSize: 20,
   },
   title: {
