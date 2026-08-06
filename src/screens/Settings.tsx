@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Switch, SafeAreaView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface Settings {
@@ -9,7 +9,7 @@ interface Settings {
   sensitivity: 'low' | 'medium' | 'high';
 }
 
-const Settings = ({ onBack, onSettingsChange }: { onBack: () => void; onSettingsChange: (settings: Settings) => void }) => {
+const Settings = ({ onBack, onSettingsChange, onResetOnboarding }: { onBack: () => void; onSettingsChange: (settings: Settings) => void; onResetOnboarding: () => void }) => {
   const [settings, setSettings] = useState<Settings>({
     rmsThreshold: 0.15,
     hapticEnabled: true,
@@ -65,10 +65,21 @@ const Settings = ({ onBack, onSettingsChange }: { onBack: () => void; onSettings
     });
   };
 
+  const handleResetOnboarding = async () => {
+    try {
+      await AsyncStorage.removeItem('onboardingCompleted');
+      onResetOnboarding();
+      onBack();
+    } catch (error) {
+      console.error('Failed to reset onboarding:', error);
+    }
+  };
+
   return (
-    <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: '#0f172a' }]}>
+      <View style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <Text style={styles.backButtonText}>←</Text>
         </TouchableOpacity>
@@ -171,12 +182,21 @@ const Settings = ({ onBack, onSettingsChange }: { onBack: () => void; onSettings
           <Text style={styles.infoText}>온음 v1.0.0</Text>
           <Text style={styles.infoText}>에어팟 사용자를 위한 스마트 위험음 감지 시스템</Text>
         </View>
+
+        {/* 온보딩 리셋 */}
+        <TouchableOpacity onPress={handleResetOnboarding} style={styles.resetButton}>
+          <Text style={styles.resetButtonText}>온보딩 다시 보기</Text>
+        </TouchableOpacity>
       </ScrollView>
-    </View>
+      </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
   container: {
     flex: 1,
     backgroundColor: '#0f172a',
@@ -325,6 +345,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#94A3B8',
     marginBottom: 4,
+  },
+  resetButton: {
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#EF4444',
+    marginBottom: 20,
+  },
+  resetButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#EF4444',
   },
 });
 

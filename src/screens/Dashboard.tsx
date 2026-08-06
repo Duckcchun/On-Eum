@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { View, Text, TouchableOpacity, FlatList, Animated, StyleSheet, Dimensions, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, Animated, StyleSheet, Dimensions, Alert, SafeAreaView } from 'react-native';
 import { triggerAlert, updateAlertSettings } from '../services/AlertService';
 import { startDetection, stopDetection } from '../services/ThreatDetector';
 import Settings from './Settings';
@@ -27,7 +27,7 @@ interface AppSettings {
   sensitivity: 'low' | 'medium' | 'high';
 }
 
-const Dashboard = () => {
+const Dashboard = ({ onResetOnboarding }: { onResetOnboarding: () => void }) => {
   const [isActive, setIsActive] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showStatistics, setShowStatistics] = useState(false);
@@ -41,6 +41,8 @@ const Dashboard = () => {
   });
   const blinkAnim = useRef(new Animated.Value(1)).current;
   const pulseAnim = useRef(new Animated.Value(0)).current;
+  const flashAnim = useRef(new Animated.Value(0)).current;
+  const logAnimations = useRef<{ [key: string]: Animated.Value }>({}).current;
 
   useEffect(() => {
     if (isActive) {
@@ -91,15 +93,45 @@ const Dashboard = () => {
     }
   }, [isActive]);
 
+  // 메모리 누수 방지 - 컴포넌트 언마운트 시 애니메이션 정리
+  useEffect(() => {
+    return () => {
+      Object.keys(logAnimations).forEach(key => {
+        delete logAnimations[key];
+      });
+    };
+  }, []);
+
   const addLog = useCallback((type: string) => {
     const newLog: DangerLog = {
       id: Date.now().toString(),
       type,
       timestamp: new Date().toLocaleTimeString('ko-KR'),
     };
+    
+    // 화면 플래시 효과
+    flashAnim.setValue(1);
+    Animated.timing(flashAnim, {
+      toValue: 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
+    
+    // 로그 애니메이션 초기화
+    logAnimations[newLog.id] = new Animated.Value(0);
+    
     setLogs((prev) => [newLog, ...prev]);
     setStats(prev => ({ ...prev, totalDetections: prev.totalDetections + 1 }));
-  }, []);
+    
+    // 로그 슬라이드인 애니메이션
+    setTimeout(() => {
+      Animated.timing(logAnimations[newLog.id], {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }).start();
+    }, 50);
+  }, [flashAnim, logAnimations]);
 
   const handleToggle = useCallback(() => {
     const newState = !isActive;
@@ -167,6 +199,7 @@ const Dashboard = () => {
       <Settings
         onBack={() => setShowSettings(false)}
         onSettingsChange={handleSettingsChange}
+        onResetOnboarding={onResetOnboarding}
       />
     );
   }
@@ -183,11 +216,24 @@ const Dashboard = () => {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: '#0f172a' }]}>
-      {/* Header */}
-      <View style={styles.header}>
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: '#0f172a' }]}>
+      <View style={[styles.container, { backgroundColor: '#0f172a' }]}>
+        {/* 감지 플래시 효과 */}
+        <Animated.View
+          style={[
+            styles.flashOverlay,
+            {
+              opacity: flashAnim,
+            },
+          ]}
+        />
+        {/* Header */}
+        <View style={styles.header}>
         <View style={styles.titleContainer}>
-          <Text style={styles.title}>온음</Text>
+          <View>
+            <Text style={styles.title}>온음</Text>
+            <Text style={styles.subtitle}>에어팟 사용자를 위한 스마트 위험음 감지 시스템</Text>
+          </View>
           <View style={[styles.statusBadge, { borderColor: isActive ? '#10B981' : '#6B7280', borderWidth: 2, backgroundColor: 'transparent' }]}>
             <Text style={[styles.statusText, { color: isActive ? '#10B981' : '#9CA3AF' }]}>{isActive ? '감지 중' : '대기'}</Text>
           </View>
@@ -201,7 +247,6 @@ const Dashboard = () => {
           </TouchableOpacity>
         </View>
       </View>
-      <Text style={styles.subtitle}>에어팟 사용자를 위한 스마트 위험음 감지 시스템</Text>
 
       {/* Stats Cards */}
       <View style={styles.statsContainer}>
@@ -289,17 +334,35 @@ const Dashboard = () => {
         <FlatList
           data={logs}
           keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <View style={styles.logItem}>
-              <View style={styles.logIconContainer}>
-                <Text style={styles.logIcon}>⚠️</Text>
-              </View>
-              <View style={styles.logContent}>
-                <Text style={styles.logType}>{item.type}</Text>
-                <Text style={styles.logTimestamp}>{item.timestamp}</Text>
-              </View>
-            </View>
-          )}
+          renderItem={({ item }) => {
+            const anim = logAnimations[item.id] || new Animated.Value(1);
+            return (
+              <Animated.View
+                style={[
+                  styles.logItem,
+                  {
+                    opacity: anim,
+                    transform: [
+                      {
+                        translateY: anim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [-20, 0],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              >
+                <View style={styles.logIconContainer}>
+                  <Text style={styles.logIcon}>⚠️</Text>
+                </View>
+                <View style={styles.logContent}>
+                  <Text style={styles.logType}>{item.type}</Text>
+                  <Text style={styles.logTimestamp}>{item.timestamp}</Text>
+                </View>
+              </Animated.View>
+            );
+          }}
           ListEmptyComponent={
             <View style={styles.emptyLogs}>
               <Text style={styles.emptyLogsText}>감지 기록 없음</Text>
@@ -309,14 +372,18 @@ const Dashboard = () => {
           style={styles.logsList}
         />
       </View>
-    </View>
+      </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    paddingTop: 60,
+    paddingTop: 40,
     paddingHorizontal: 20,
   },
   header: {
@@ -376,7 +443,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderRadius: 16,
     padding: 16,
-    marginHorizontal: 4,
+    marginHorizontal: 6,
     flexDirection: 'row',
     alignItems: 'center',
     shadowColor: '#000',
@@ -433,7 +500,6 @@ const styles = StyleSheet.create({
     height: 180,
     borderRadius: 90,
     borderWidth: 4,
-    borderColor: '#EF4444',
   },
   buttonText: {
     fontSize: 36,
@@ -531,7 +597,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderRadius: 12,
     padding: 20,
-    marginBottom: 16,
+    marginBottom: 12,
   },
   logIconContainer: {
     width: 40,
@@ -572,6 +638,16 @@ const styles = StyleSheet.create({
   emptyLogsSubtext: {
     fontSize: 14,
     color: '#94A3B8',
+  },
+  flashOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(239, 68, 68, 0.3)',
+    pointerEvents: 'none',
+    zIndex: 1000,
   },
 });
 

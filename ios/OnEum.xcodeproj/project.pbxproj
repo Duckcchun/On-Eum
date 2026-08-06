@@ -196,7 +196,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "set -e\n\ncd /Users/SonDongMin/On-Eum\n\nexport NODE_BINARY=node\nexport RCT_METRO_PORT=8081\nexport ENTRY_FILE=index.js\n\nif [ \"$CONFIGURATION\" = \"Debug\" ]; then\n  echo \"Skipping bundle for Debug configuration (will use Metro)\"\n  exit 0\nfi\n\nif [ -z \"$RCT_METRO_PORT\" ]; then\n  RCT_METRO_PORT=8081\nfi\n\necho \"Bundling React Native code...\"\n\nnode node_modules/react-native/cli.js bundle --entry-file index.js --platform ios --dev false --bundle-output build/main.jsbundle --assets-dest build/\n";
-			workingDirectory = /Users/SonDongMin/On-Eum;
 		};
 		00EEFC60759A1932668264C0 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;

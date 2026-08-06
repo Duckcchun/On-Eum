@@ -1,6 +1,5 @@
 import Foundation
 import AVFoundation
-import React
 
 @objc(AudioBufferManager)
 class AudioBufferManager: RCTEventEmitter {
@@ -30,18 +29,17 @@ class AudioBufferManager: RCTEventEmitter {
     }
     
     audioEngine = AVAudioEngine()
-    guard let engine = audioEngine else {
+    guard let audioEngine = audioEngine else {
       NSLog("[AudioBufferManager] Failed to create audio engine")
       return
     }
     
-    let inputNode = engine.inputNode
-    let inputFormat = inputNode.outputFormat(forBus: 0)
+    let inputNode = audioEngine.inputNode
+    let format = inputNode.outputFormat(forBus: 0)
     
-    // Use the input node's actual format directly
-    let bufferSize: AVAudioFrameCount = AVAudioFrameCount(inputFormat.sampleRate * 0.1)
+    let bufferSize: AVAudioFrameCount = AVAudioFrameCount(format.sampleRate * 0.1)
     
-    inputNode.installTap(onBus: 0, bufferSize: bufferSize, format: inputFormat) { [weak self] buffer, _ in
+    inputNode.installTap(onBus: 0, bufferSize: bufferSize, format: format) { [weak self] buffer, _ in
       guard let self = self else { return }
       
       guard let channelData = buffer.floatChannelData?[0] else {
@@ -62,14 +60,14 @@ class AudioBufferManager: RCTEventEmitter {
       
       self.sendEvent(withName: "onAudioBuffer", body: [
         "rms": rms,
-        "sampleRate": inputFormat.sampleRate,
+        "sampleRate": format.sampleRate,
         "frameLength": frameLength,
         "samples": bufferData.map { NSNumber(value: $0) }
       ])
     }
     
     do {
-      try engine.start()
+      try audioEngine.start()
       isRecording = true
       NSLog("[AudioBufferManager] Audio engine started successfully")
     } catch {
