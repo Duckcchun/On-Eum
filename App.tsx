@@ -114,7 +114,7 @@ const App = () => {
   }
 
   return (
-    <SafeAreaView className="flex-1">
+    <SafeAreaView style={styles.safeArea}>
       {showOnboarding ? (
         <Onboarding onComplete={handleOnboardingComplete} />
       ) : (
@@ -125,6 +125,9 @@ const App = () => {
 };
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+  },
   container: {
     flex: 1,
     backgroundColor: '#0F172A',
