@@ -3,7 +3,7 @@ import { View, TouchableOpacity, Text, StyleSheet, Animated, Dimensions } from '
 
 const { width } = Dimensions.get('window');
 
-export type TabName = 'home' | 'history' | 'stats' | 'settings';
+export type TabName = 'home' | 'history' | 'map' | 'stats' | 'settings';
 
 interface TabItem {
   key: TabName;
@@ -15,6 +15,7 @@ interface TabItem {
 const tabs: TabItem[] = [
   { key: 'home', label: '홈', icon: '🏠', iconActive: '🏠' },
   { key: 'history', label: '기록', icon: '🕐', iconActive: '🕐' },
+  { key: 'map', label: '지도', icon: '📍', iconActive: '📍' },
   { key: 'stats', label: '통계', icon: '📊', iconActive: '📊' },
   { key: 'settings', label: '설정', icon: '⚙️', iconActive: '⚙️' },
 ];

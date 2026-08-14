@@ -5,6 +5,7 @@ import { AppProvider, useApp } from './src/context/AppContext';
 import TabBar, { TabName } from './src/navigation/TabBar';
 import HomeScreen from './src/screens/HomeScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
+import MapScreen from './src/screens/MapScreen';
 import StatsScreen from './src/screens/StatsScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import Onboarding from './src/screens/Onboarding';
@@ -132,6 +133,8 @@ const MainScreen: React.FC<{ activeTab: TabName; setActiveTab: (tab: TabName) =>
       return <HomeScreen />;
     case 'history':
       return <HistoryScreen />;
+    case 'map':
+      return <MapScreen />;
     case 'stats':
       return <StatsScreen />;
     case 'settings':
