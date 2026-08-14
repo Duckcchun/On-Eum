@@ -26,11 +26,20 @@ interface AppState {
   settings: AppSettings;
 }
 
+export interface ThreatInfo {
+  type: string;
+  icon: string;
+  severity: 'danger' | 'warning' | 'info';
+  detectedAt: string;
+}
+
 interface AppContextType extends AppState {
+  currentThreat: ThreatInfo | null;
   toggleDetection: () => void;
   updateSettings: (settings: AppSettings) => void;
   clearLogs: () => void;
   dismissDetection: () => void;
+  simulateThreat: (threatType?: 'kickboard' | 'motorcycle' | 'vehicle' | 'horn') => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -41,9 +50,34 @@ export const useApp = () => {
   return context;
 };
 
+// ─── Threat type definitions ───
+const THREAT_TYPES = {
+  kickboard: {
+    type: '전동 킥보드 접근 감지',
+    icon: '🛴',
+    severity: 'danger' as const,
+  },
+  motorcycle: {
+    type: '오토바이 접근 감지',
+    icon: '🏍️',
+    severity: 'warning' as const,
+  },
+  vehicle: {
+    type: '차량 접근 감지',
+    icon: '🚗',
+    severity: 'danger' as const,
+  },
+  horn: {
+    type: '경적 소리 감지',
+    icon: '📢',
+    severity: 'warning' as const,
+  },
+};
+
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isActive, setIsActive] = useState(false);
   const [isDetecting, setIsDetecting] = useState(false);
+  const [currentThreat, setCurrentThreat] = useState<ThreatInfo | null>(null);
   const [logs, setLogs] = useState<DetectionLog[]>([]);
   const [stats, setStats] = useState({ totalDetections: 0, activeTime: 0, todayDetections: 0 });
   const [settings, setSettings] = useState<AppSettings>({
@@ -100,10 +134,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       type,
       timestamp: now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
       date: now.toLocaleDateString('ko-KR'),
-      severity: type.includes('킥보드') ? 'danger' : type.includes('오토바이') ? 'warning' : 'danger',
+      severity: type.includes('킥보드') || type.includes('차량')
+        ? 'danger'
+        : type.includes('오토바이') || type.includes('경적')
+        ? 'warning'
+        : 'danger',
     };
 
-    setLogs(prev => [newLog, ...prev].slice(0, 100)); // max 100 logs
+    // Set current threat info
+    const threatInfo: ThreatInfo = {
+      type: newLog.type,
+      icon: type.includes('킥보드') ? '🛴' : type.includes('오토바이') ? '🏍️' : type.includes('차량') ? '🚗' : type.includes('경적') ? '📢' : '⚠️',
+      severity: newLog.severity,
+      detectedAt: now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+    };
+
+    setCurrentThreat(threatInfo);
+    setLogs(prev => [newLog, ...prev].slice(0, 100));
     setStats(prev => ({
       ...prev,
       totalDetections: prev.totalDetections + 1,
@@ -115,8 +162,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (detectTimeoutRef.current) clearTimeout(detectTimeoutRef.current);
     detectTimeoutRef.current = setTimeout(() => {
       setIsDetecting(false);
+      setCurrentThreat(null);
     }, 5000);
   }, []);
+
+  const simulateThreat = useCallback((threatType: 'kickboard' | 'motorcycle' | 'vehicle' | 'horn' = 'kickboard') => {
+    const threat = THREAT_TYPES[threatType];
+    addLog(threat.type);
+    triggerAlert();
+  }, [addLog]);
 
   const toggleDetection = useCallback(() => {
     const newState = !isActive;
@@ -150,6 +204,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const dismissDetection = useCallback(() => {
     setIsDetecting(false);
+    setCurrentThreat(null);
   }, []);
 
   return (
@@ -157,6 +212,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       value={{
         isActive,
         isDetecting,
+        currentThreat,
         logs,
         stats,
         settings,
@@ -164,6 +220,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         updateSettings: updateSettingsHandler,
         clearLogs,
         dismissDetection,
+        simulateThreat,
       }}
     >
       {children}

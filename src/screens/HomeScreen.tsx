@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -8,14 +8,15 @@ import {
   Dimensions,
   ScrollView,
 } from 'react-native';
-import { useApp } from '../context/AppContext';
+import { useApp, ThreatInfo } from '../context/AppContext';
 
 const { width } = Dimensions.get('window');
 
 // ─── Radar Animation Component ───
-const RadarCircle: React.FC<{ isActive: boolean; isDetecting: boolean }> = ({
+const RadarCircle: React.FC<{ isActive: boolean; isDetecting: boolean; threatIcon?: string }> = ({
   isActive,
   isDetecting,
+  threatIcon,
 }) => {
   const pulse1 = useRef(new Animated.Value(0)).current;
   const pulse2 = useRef(new Animated.Value(0)).current;
@@ -114,7 +115,7 @@ const RadarCircle: React.FC<{ isActive: boolean; isDetecting: boolean }> = ({
       >
         {/* Icon */}
         <Text style={styles.radarIcon}>
-          {isDetecting ? '🛴' : '🎧'}
+          {isDetecting ? (threatIcon || '🛴') : '🎧'}
         </Text>
 
         {/* Status text */}
@@ -124,6 +125,134 @@ const RadarCircle: React.FC<{ isActive: boolean; isDetecting: boolean }> = ({
         <Text style={[styles.radarSubStatus, { color: isDetecting ? '#FCA5A5' : isActive ? '#6EE7B7' : '#6B7280' }]}>
           {isDetecting ? '위험 감지됨' : isActive ? 'Listening...' : '비활성'}
         </Text>
+      </View>
+    </View>
+  );
+};
+
+// ─── Threat Detail Card ───
+const ThreatDetailCard: React.FC<{ threat: ThreatInfo; onDismiss: () => void }> = ({ threat, onDismiss }) => {
+  const slideAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.spring(slideAnim, {
+      toValue: 1,
+      tension: 60,
+      friction: 10,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+
+  return (
+    <Animated.View
+      style={[
+        styles.threatCard,
+        {
+          opacity: slideAnim,
+          transform: [{
+            translateY: slideAnim.interpolate({
+              inputRange: [0, 1],
+              outputRange: [30, 0],
+            }),
+          }],
+        },
+      ]}
+    >
+      {/* Threat header */}
+      <View style={styles.threatHeader}>
+        <View style={styles.threatHeaderLeft}>
+          <View style={styles.threatIconBig}>
+            <Text style={styles.threatIconBigText}>{threat.icon}</Text>
+          </View>
+          <View>
+            <Text style={styles.threatType}>{threat.type}</Text>
+            <Text style={styles.threatTime}>감지 시각: {threat.detectedAt}</Text>
+          </View>
+        </View>
+        <View style={[
+          styles.threatSeverityBadge,
+          { backgroundColor: threat.severity === 'danger' ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)' }
+        ]}>
+          <Text style={[
+            styles.threatSeverityText,
+            { color: threat.severity === 'danger' ? '#EF4444' : '#F59E0B' }
+          ]}>
+            {threat.severity === 'danger' ? '위험' : '주의'}
+          </Text>
+        </View>
+      </View>
+
+      {/* Real-time status indicators */}
+      <View style={styles.threatStatusRow}>
+        <View style={styles.threatStatusItem}>
+          <Text style={styles.threatStatusIcon}>📳</Text>
+          <View>
+            <Text style={styles.threatStatusLabel}>에어팟 경고음</Text>
+            <Text style={styles.threatStatusValue}>전송 중</Text>
+          </View>
+          <View style={styles.waveSmall}>
+            {[1,2,3,4].map(i => (
+              <View key={i} style={[styles.waveBarSmall, { height: 4 + Math.random() * 8 }]} />
+            ))}
+          </View>
+        </View>
+
+        <View style={styles.threatStatusItem}>
+          <Text style={styles.threatStatusIcon}>📳</Text>
+          <View>
+            <Text style={styles.threatStatusLabel}>진동 경고</Text>
+            <Text style={styles.threatStatusValue}>전송 중</Text>
+          </View>
+          <View style={styles.vibrationDots}>
+            {[1,2,3].map(i => (
+              <View key={i} style={styles.vibrationDot} />
+            ))}
+          </View>
+        </View>
+      </View>
+
+      {/* Dismiss button */}
+      <TouchableOpacity onPress={onDismiss} style={styles.dismissBtn}>
+        <Text style={styles.dismissBtnIcon}>✅</Text>
+        <Text style={styles.dismissBtnText}>안전해졌어요</Text>
+        <Text style={styles.dismissBtnSub}>위험이 사라졌다면 눌러주세요</Text>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+};
+
+// ─── Simulation Panel ───
+const SimulationPanel: React.FC<{
+  onSimulate: (type: 'kickboard' | 'motorcycle' | 'vehicle' | 'horn') => void;
+}> = ({ onSimulate }) => {
+  const simOptions = [
+    { key: 'kickboard' as const, icon: '🛴', label: '킥보드' },
+    { key: 'motorcycle' as const, icon: '🏍️', label: '오토바이' },
+    { key: 'vehicle' as const, icon: '🚗', label: '차량' },
+    { key: 'horn' as const, icon: '📢', label: '경적' },
+  ];
+
+  return (
+    <View style={styles.simPanel}>
+      <View style={styles.simHeader}>
+        <Text style={styles.simHeaderIcon}>🧪</Text>
+        <Text style={styles.simHeaderText}>시뮬레이션</Text>
+        <View style={styles.simDevBadge}>
+          <Text style={styles.simDevBadgeText}>DEV</Text>
+        </View>
+      </View>
+      <View style={styles.simGrid}>
+        {simOptions.map(opt => (
+          <TouchableOpacity
+            key={opt.key}
+            style={styles.simBtn}
+            onPress={() => onSimulate(opt.key)}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.simBtnIcon}>{opt.icon}</Text>
+            <Text style={styles.simBtnLabel}>{opt.label}</Text>
+          </TouchableOpacity>
+        ))}
       </View>
     </View>
   );
@@ -181,8 +310,18 @@ const LogItem: React.FC<{
 
 // ─── Main HomeScreen ───
 const HomeScreen: React.FC = () => {
-  const { isActive, isDetecting, logs, stats, toggleDetection, dismissDetection } = useApp();
+  const {
+    isActive,
+    isDetecting,
+    currentThreat,
+    logs,
+    stats,
+    toggleDetection,
+    dismissDetection,
+    simulateThreat,
+  } = useApp();
   const flashAnim = useRef(new Animated.Value(0)).current;
+  const [showSimPanel, setShowSimPanel] = useState(false);
 
   useEffect(() => {
     if (isDetecting) {
@@ -244,33 +383,32 @@ const HomeScreen: React.FC = () => {
         </View>
 
         {/* Detection Alert Banner */}
-        {isDetecting && (
+        {isDetecting && currentThreat && (
           <View style={styles.alertBanner}>
             <View style={styles.alertBannerLeft}>
               <Text style={styles.alertBannerIcon}>⚠️</Text>
               <View>
                 <Text style={styles.alertBannerTitle}>위험 감지!</Text>
                 <Text style={styles.alertBannerSubtitle}>
-                  전동 킥보드 접근이 감지되었습니다.
+                  {currentThreat.type.replace(' 감지', '')}이 감지되었습니다.
                 </Text>
               </View>
             </View>
-            <View style={styles.alertWaveform}>
-              {[1, 2, 3, 4, 5].map(i => (
-                <View
-                  key={i}
-                  style={[
-                    styles.waveBar,
-                    { height: 8 + Math.random() * 12 },
-                  ]}
-                />
-              ))}
-            </View>
+            <Text style={styles.alertBannerTime}>{currentThreat.detectedAt}</Text>
           </View>
         )}
 
         {/* Radar */}
-        <RadarCircle isActive={isActive} isDetecting={isDetecting} />
+        <RadarCircle
+          isActive={isActive}
+          isDetecting={isDetecting}
+          threatIcon={currentThreat?.icon}
+        />
+
+        {/* Threat Detail Card - shown during detection */}
+        {isDetecting && currentThreat && (
+          <ThreatDetailCard threat={currentThreat} onDismiss={dismissDetection} />
+        )}
 
         {/* Listening indicator */}
         {isActive && !isDetecting && (
@@ -290,6 +428,25 @@ const HomeScreen: React.FC = () => {
               ))}
             </View>
             <Text style={styles.listeningText}>AI가 주변 소리를 분석하고 있습니다</Text>
+          </View>
+        )}
+
+        {/* Simulation Panel - shown when active */}
+        {isActive && (
+          <View>
+            <TouchableOpacity
+              style={styles.simToggle}
+              onPress={() => setShowSimPanel(!showSimPanel)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.simToggleText}>
+                {showSimPanel ? '🧪 시뮬레이션 닫기' : '🧪 시뮬레이션 열기'}
+              </Text>
+            </TouchableOpacity>
+
+            {showSimPanel && (
+              <SimulationPanel onSimulate={simulateThreat} />
+            )}
           </View>
         )}
 
@@ -346,22 +503,6 @@ const HomeScreen: React.FC = () => {
             </View>
           )}
         </View>
-
-        {/* Safety Dismissed Card */}
-        {!isDetecting && logs.length > 0 && (
-          <TouchableOpacity style={styles.safeCard}>
-            <View style={styles.safeCardLeft}>
-              <Text style={styles.safeCardIcon}>✅</Text>
-              <View>
-                <Text style={styles.safeCardTitle}>안전해졌어요</Text>
-                <Text style={styles.safeCardSubtitle}>
-                  위험이 사라졌다면 눌러주세요
-                </Text>
-              </View>
-            </View>
-            <Text style={styles.safeCardArrow}>›</Text>
-          </TouchableOpacity>
-        )}
 
         {/* Safety Tip */}
         <View style={styles.tipCard}>
@@ -467,15 +608,10 @@ const styles = StyleSheet.create({
     color: '#FCA5A5',
     marginTop: 2,
   },
-  alertWaveform: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-  },
-  waveBar: {
-    width: 3,
-    backgroundColor: '#EF4444',
-    borderRadius: 2,
+  alertBannerTime: {
+    fontSize: 12,
+    color: '#FCA5A5',
+    fontWeight: '600',
   },
 
   // Radar
@@ -516,6 +652,202 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     marginTop: 4,
+  },
+
+  // Threat Detail Card
+  threatCard: {
+    backgroundColor: 'rgba(239, 68, 68, 0.06)',
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.2)',
+  },
+  threatHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 18,
+  },
+  threatHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  threatIconBig: {
+    width: 50,
+    height: 50,
+    borderRadius: 14,
+    backgroundColor: 'rgba(239, 68, 68, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  threatIconBigText: {
+    fontSize: 26,
+  },
+  threatType: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  threatTime: {
+    fontSize: 12,
+    color: '#94A3B8',
+    marginTop: 3,
+  },
+  threatSeverityBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  threatSeverityText: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+
+  // Threat status row
+  threatStatusRow: {
+    gap: 10,
+    marginBottom: 18,
+  },
+  threatStatusItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 12,
+    padding: 14,
+  },
+  threatStatusIcon: {
+    fontSize: 18,
+  },
+  threatStatusLabel: {
+    fontSize: 13,
+    color: '#94A3B8',
+  },
+  threatStatusValue: {
+    fontSize: 12,
+    color: '#6EE7B7',
+    fontWeight: '600',
+  },
+  waveSmall: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+    marginLeft: 'auto',
+  },
+  waveBarSmall: {
+    width: 2.5,
+    backgroundColor: '#EF4444',
+    borderRadius: 2,
+  },
+  vibrationDots: {
+    flexDirection: 'row',
+    gap: 4,
+    marginLeft: 'auto',
+  },
+  vibrationDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#F59E0B',
+  },
+
+  // Dismiss button
+  dismissBtn: {
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderRadius: 14,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(16, 185, 129, 0.2)',
+  },
+  dismissBtnIcon: {
+    fontSize: 22,
+    marginBottom: 6,
+  },
+  dismissBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#10B981',
+  },
+  dismissBtnSub: {
+    fontSize: 12,
+    color: '#6EE7B7',
+    marginTop: 3,
+  },
+
+  // Simulation
+  simToggle: {
+    alignSelf: 'center',
+    backgroundColor: 'rgba(124, 58, 237, 0.1)',
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(124, 58, 237, 0.25)',
+    marginBottom: 16,
+  },
+  simToggleText: {
+    fontSize: 13,
+    color: '#A78BFA',
+    fontWeight: '600',
+  },
+  simPanel: {
+    backgroundColor: 'rgba(124, 58, 237, 0.06)',
+    borderRadius: 18,
+    padding: 18,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(124, 58, 237, 0.15)',
+  },
+  simHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 14,
+  },
+  simHeaderIcon: {
+    fontSize: 16,
+  },
+  simHeaderText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#C4B5FD',
+  },
+  simDevBadge: {
+    backgroundColor: 'rgba(124, 58, 237, 0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    marginLeft: 4,
+  },
+  simDevBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#A78BFA',
+  },
+  simGrid: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  simBtn: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 14,
+    padding: 14,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  simBtnIcon: {
+    fontSize: 26,
+    marginBottom: 6,
+  },
+  simBtnLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#94A3B8',
   },
 
   // Listening
@@ -672,42 +1004,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#475569',
     textAlign: 'center',
-  },
-
-  // Safe Card
-  safeCard: {
-    backgroundColor: 'rgba(16, 185, 129, 0.08)',
-    borderRadius: 16,
-    padding: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.15)',
-  },
-  safeCardLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  safeCardIcon: {
-    fontSize: 22,
-  },
-  safeCardTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  safeCardSubtitle: {
-    fontSize: 12,
-    color: '#6EE7B7',
-    marginTop: 2,
-  },
-  safeCardArrow: {
-    fontSize: 24,
-    color: '#6EE7B7',
-    fontWeight: '300',
   },
 
   // Tip Card
