@@ -8,6 +8,7 @@ import HistoryScreen from './src/screens/HistoryScreen';
 import StatsScreen from './src/screens/StatsScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import Onboarding from './src/screens/Onboarding';
+import PermissionScreen from './src/screens/PermissionScreen';
 
 // ─── Splash Screen ───
 const SplashScreen: React.FC = () => {
@@ -90,12 +91,32 @@ const MainApp: React.FC = () => {
   return (
     <View style={mainStyles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0B1120" />
-      <View style={mainStyles.screen}>
-        <MainScreen activeTab={activeTab} setActiveTab={setActiveTab} />
-      </View>
-      <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
+      <PermissionGate>
+        <View style={mainStyles.screen}>
+          <MainScreen activeTab={activeTab} setActiveTab={setActiveTab} />
+        </View>
+        <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
+      </PermissionGate>
     </View>
   );
+};
+
+// Permission gate - shows permission screen if mic not granted
+const PermissionGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { micPermission, requestMicPermission } = useApp();
+  const [skipped, setSkipped] = useState(false);
+
+  if (!skipped && micPermission !== 'granted') {
+    return (
+      <PermissionScreen
+        status={micPermission === 'denied' ? 'denied' : 'undetermined'}
+        onRequestPermission={requestMicPermission}
+        onSkip={() => setSkipped(true)}
+      />
+    );
+  }
+
+  return <>{children}</>;
 };
 
 // Separate component to access AppContext (inside AppProvider)

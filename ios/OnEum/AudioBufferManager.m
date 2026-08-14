@@ -5,5 +5,6 @@
 
 RCT_EXTERN_METHOD(startListening)
 RCT_EXTERN_METHOD(stopListening)
+RCT_EXTERN_METHOD(setAdaptiveMode:(BOOL)enabled)
 
 @end

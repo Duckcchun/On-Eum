@@ -2,6 +2,14 @@ import React, { createContext, useContext, useState, useCallback, useRef, useEff
 import { triggerAlert, updateAlertSettings } from '../services/AlertService';
 import { startDetection, stopDetection } from '../services/ThreatDetector';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  getCurrentRoute,
+  onRouteChange,
+  checkMicrophonePermission,
+  requestMicrophonePermission,
+  AudioRouteInfo,
+} from '../native/AudioRouteModule';
+import { setAdaptiveMode, onBackgroundStateChange } from '../native/AudioBufferModule';
 
 // ─── Types ───
 export interface DetectionLog {
@@ -32,6 +40,13 @@ interface AppState {
   logs: DetectionLog[];
   stats: { totalDetections: number; activeTime: number; todayDetections: number };
   settings: AppSettings;
+  audioRoute: {
+    isAirPodsConnected: boolean;
+    isBluetoothConnected: boolean;
+    deviceName: string;
+    outputType: string;
+  };
+  micPermission: 'granted' | 'denied' | 'undetermined';
 }
 
 interface AppContextType extends AppState {
@@ -43,6 +58,8 @@ interface AppContextType extends AppState {
   simulateThreat: (threatType?: 'kickboard' | 'motorcycle' | 'vehicle' | 'horn') => void;
   navigateToTab: (tab: string) => void;
   setTabNavigator: (fn: (tab: string) => void) => void;
+  requestMicPermission: () => Promise<string>;
+  markFalsePositive: (logId: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -100,10 +117,68 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const detectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tabNavigatorRef = useRef<((tab: string) => void) | null>(null);
+  const [audioRoute, setAudioRoute] = useState({
+    isAirPodsConnected: false,
+    isBluetoothConnected: false,
+    deviceName: '',
+    outputType: 'builtInSpeaker',
+  });
+  const [micPermission, setMicPermission] = useState<'granted' | 'denied' | 'undetermined'>('undetermined');
 
   // ─── Load persisted data on mount ───
   useEffect(() => {
     loadPersistedData();
+    initAudioRoute();
+    checkMicPermission();
+  }, []);
+
+  // ─── Audio Route Monitoring ───
+  useEffect(() => {
+    const unsubscribeRoute = onRouteChange((event) => {
+      setAudioRoute({
+        isAirPodsConnected: event.isAirPods,
+        isBluetoothConnected: event.isBluetoothConnected,
+        deviceName: event.deviceModel || event.outputName,
+        outputType: event.outputType,
+      });
+    });
+
+    // Background state: enable adaptive mode when app goes to background
+    const unsubscribeBackground = onBackgroundStateChange((event) => {
+      if (event.isBackground) {
+        setAdaptiveMode(true);
+      } else {
+        setAdaptiveMode(false);
+      }
+    });
+
+    return () => {
+      unsubscribeRoute();
+      unsubscribeBackground();
+    };
+  }, []);
+
+  const initAudioRoute = async () => {
+    const route = await getCurrentRoute();
+    if (route) {
+      setAudioRoute({
+        isAirPodsConnected: route.isAirPods,
+        isBluetoothConnected: route.isBluetoothConnected,
+        deviceName: route.deviceModel || route.outputName,
+        outputType: route.outputType,
+      });
+    }
+  };
+
+  const checkMicPermission = async () => {
+    const permission = await checkMicrophonePermission();
+    setMicPermission(permission as 'granted' | 'denied' | 'undetermined');
+  };
+
+  const requestMicPermission = useCallback(async (): Promise<string> => {
+    const result = await requestMicrophonePermission();
+    setMicPermission(result as 'granted' | 'denied' | 'undetermined');
+    return result;
   }, []);
 
   // ─── Active time counter ───
@@ -304,6 +379,16 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCurrentThreat(null);
   }, []);
 
+  const markFalsePositive = useCallback((logId: string) => {
+    setLogs(prev => {
+      const updated = prev.map(log =>
+        log.id === logId ? { ...log, type: `[오탐] ${log.type}`, severity: 'info' as const } : log
+      );
+      persistLogs(updated);
+      return updated;
+    });
+  }, []);
+
   return (
     <AppContext.Provider
       value={{
@@ -313,6 +398,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         logs,
         stats,
         settings,
+        audioRoute,
+        micPermission,
         toggleDetection,
         updateSettings: updateSettingsHandler,
         clearLogs,
@@ -320,6 +407,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         simulateThreat,
         navigateToTab,
         setTabNavigator,
+        requestMicPermission,
+        markFalsePositive,
       }}
     >
       {children}

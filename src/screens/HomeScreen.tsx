@@ -131,7 +131,11 @@ const RadarCircle: React.FC<{ isActive: boolean; isDetecting: boolean; threatIco
 };
 
 // ─── Threat Detail Card ───
-const ThreatDetailCard: React.FC<{ threat: ThreatInfo; onDismiss: () => void }> = ({ threat, onDismiss }) => {
+const ThreatDetailCard: React.FC<{
+  threat: ThreatInfo;
+  onDismiss: () => void;
+  onFalsePositive: () => void;
+}> = ({ threat, onDismiss, onFalsePositive }) => {
   const slideAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -212,11 +216,17 @@ const ThreatDetailCard: React.FC<{ threat: ThreatInfo; onDismiss: () => void }> 
       </View>
 
       {/* Dismiss button */}
-      <TouchableOpacity onPress={onDismiss} style={styles.dismissBtn}>
-        <Text style={styles.dismissBtnIcon}>✅</Text>
-        <Text style={styles.dismissBtnText}>안전해졌어요</Text>
-        <Text style={styles.dismissBtnSub}>위험이 사라졌다면 눌러주세요</Text>
-      </TouchableOpacity>
+      <View style={styles.threatActions}>
+        <TouchableOpacity onPress={onDismiss} style={styles.dismissBtn}>
+          <Text style={styles.dismissBtnIcon}>✅</Text>
+          <Text style={styles.dismissBtnText}>안전해졌어요</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={onFalsePositive} style={styles.falsePositiveBtn}>
+          <Text style={styles.falsePositiveBtnIcon}>❌</Text>
+          <Text style={styles.falsePositiveBtnText}>오탐이에요</Text>
+        </TouchableOpacity>
+      </View>
     </Animated.View>
   );
 };
@@ -316,10 +326,12 @@ const HomeScreen: React.FC = () => {
     currentThreat,
     logs,
     stats,
+    audioRoute,
     toggleDetection,
     dismissDetection,
     simulateThreat,
     navigateToTab,
+    markFalsePositive,
   } = useApp();
   const flashAnim = useRef(new Animated.Value(0)).current;
   const [showSimPanel, setShowSimPanel] = useState(false);
@@ -408,7 +420,16 @@ const HomeScreen: React.FC = () => {
 
         {/* Threat Detail Card - shown during detection */}
         {isDetecting && currentThreat && (
-          <ThreatDetailCard threat={currentThreat} onDismiss={dismissDetection} />
+          <ThreatDetailCard
+            threat={currentThreat}
+            onDismiss={dismissDetection}
+            onFalsePositive={() => {
+              if (logs.length > 0) {
+                markFalsePositive(logs[0].id);
+              }
+              dismissDetection();
+            }}
+          />
         )}
 
         {/* Listening indicator */}
@@ -456,9 +477,9 @@ const HomeScreen: React.FC = () => {
           <StatusCard
             icon="🎧"
             title="AirPods"
-            value={isActive ? '연결됨' : '대기'}
-            subtitle={isActive ? '정상' : '꺼짐'}
-            color={isActive ? '#10B981' : '#6B7280'}
+            value={audioRoute.isAirPodsConnected ? '연결됨' : audioRoute.isBluetoothConnected ? 'BT 연결' : '미연결'}
+            subtitle={audioRoute.isAirPodsConnected ? audioRoute.deviceName : audioRoute.isBluetoothConnected ? audioRoute.deviceName : '꺼짐'}
+            color={audioRoute.isAirPodsConnected ? '#10B981' : audioRoute.isBluetoothConnected ? '#3B82F6' : '#6B7280'}
           />
           <StatusCard
             icon="🎙️"
@@ -757,7 +778,12 @@ const styles = StyleSheet.create({
   },
 
   // Dismiss button
+  threatActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
   dismissBtn: {
+    flex: 1,
     backgroundColor: 'rgba(16, 185, 129, 0.1)',
     borderRadius: 14,
     padding: 16,
@@ -766,18 +792,31 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(16, 185, 129, 0.2)',
   },
   dismissBtnIcon: {
-    fontSize: 22,
-    marginBottom: 6,
+    fontSize: 20,
+    marginBottom: 4,
   },
   dismissBtnText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
     color: '#10B981',
   },
-  dismissBtnSub: {
-    fontSize: 12,
-    color: '#6EE7B7',
-    marginTop: 3,
+  falsePositiveBtn: {
+    flex: 1,
+    backgroundColor: 'rgba(107, 114, 128, 0.1)',
+    borderRadius: 14,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(107, 114, 128, 0.2)',
+  },
+  falsePositiveBtnIcon: {
+    fontSize: 20,
+    marginBottom: 4,
+  },
+  falsePositiveBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#9CA3AF',
   },
 
   // Simulation
