@@ -1,4 +1,16 @@
 {
   "name": "OnEum",
-  "displayName": "온음"
+  "displayName": "온음",
+  "version": "1.0.0",
+  "description": "에어팟 사용자를 위한 AI 위험음 감지 시스템",
+  "ios": {
+    "bundleIdentifier": "com.duckcchun.oneum",
+    "buildNumber": "1",
+    "supportsTablet": false,
+    "infoPlist": {
+      "NSMicrophoneUsageDescription": "온음은 킥보드, 오토바이, 차량 등 위험한 소리를 실시간으로 감지하여 보행자를 보호합니다.",
+      "NSLocationWhenInUseUsageDescription": "위험 감지 시 현재 위치를 기록하여 위험 지점 지도를 제공합니다.",
+      "UIBackgroundModes": ["audio", "location"]
+    }
+  }
 }
