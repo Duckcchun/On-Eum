@@ -107,17 +107,33 @@ const PermissionGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
   const { micPermission, requestMicPermission } = useApp();
   const [skipped, setSkipped] = useState(false);
 
-  if (!skipped && micPermission !== 'granted') {
-    return (
-      <PermissionScreen
-        status={micPermission === 'denied' ? 'denied' : 'undetermined'}
-        onRequestPermission={requestMicPermission}
-        onSkip={() => setSkipped(true)}
-      />
-    );
+  // 시뮬레이터에서는 네이티브 모듈이 없어 권한 체크 불가 → 자동 스킵
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      if (micPermission === 'undetermined') {
+        setSkipped(true);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [micPermission]);
+
+  if (skipped || micPermission === 'granted') {
+    return <>{children}</>;
   }
 
-  return <>{children}</>;
+  return (
+    <PermissionScreen
+      status={micPermission === 'denied' ? 'denied' : 'undetermined'}
+      onRequestPermission={async () => {
+        const result = await requestMicPermission();
+        if (result === 'undetermined') {
+          setSkipped(true);
+        }
+        return result;
+      }}
+      onSkip={() => setSkipped(true)}
+    />
+  );
 };
 
 // Separate component to access AppContext (inside AppProvider)
