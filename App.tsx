@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, StatusBar } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AppProvider } from './src/context/AppContext';
+import { AppProvider, useApp } from './src/context/AppContext';
 import TabBar, { TabName } from './src/navigation/TabBar';
 import HomeScreen from './src/screens/HomeScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
@@ -87,28 +87,37 @@ const SplashScreen: React.FC = () => {
 const MainApp: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabName>('home');
 
-  const renderScreen = () => {
-    switch (activeTab) {
-      case 'home':
-        return <HomeScreen />;
-      case 'history':
-        return <HistoryScreen />;
-      case 'stats':
-        return <StatsScreen />;
-      case 'settings':
-        return <SettingsScreen />;
-      default:
-        return <HomeScreen />;
-    }
-  };
-
   return (
     <View style={mainStyles.container}>
       <StatusBar barStyle="light-content" backgroundColor="#0B1120" />
-      <View style={mainStyles.screen}>{renderScreen()}</View>
+      <View style={mainStyles.screen}>
+        <MainScreen activeTab={activeTab} setActiveTab={setActiveTab} />
+      </View>
       <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
     </View>
   );
+};
+
+// Separate component to access AppContext (inside AppProvider)
+const MainScreen: React.FC<{ activeTab: TabName; setActiveTab: (tab: TabName) => void }> = ({ activeTab, setActiveTab }) => {
+  const { setTabNavigator } = useApp();
+
+  useEffect(() => {
+    setTabNavigator((tab: string) => setActiveTab(tab as TabName));
+  }, [setTabNavigator, setActiveTab]);
+
+  switch (activeTab) {
+    case 'home':
+      return <HomeScreen />;
+    case 'history':
+      return <HistoryScreen />;
+    case 'stats':
+      return <StatsScreen />;
+    case 'settings':
+      return <SettingsScreen />;
+    default:
+      return <HomeScreen />;
+  }
 };
 
 // ─── Root App ───

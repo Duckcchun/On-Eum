@@ -23,6 +23,24 @@ interface DetectionSettings {
   sensitivity: 'low' | 'medium' | 'high';
 }
 
+/**
+ * RMS 강도에 따라 위험 유형을 추정합니다.
+ * - 매우 높은 RMS (> 0.4): 차량 접근 (엔진 소리가 큼)
+ * - 높은 RMS (> 0.25): 오토바이 접근
+ * - 중간 RMS: 전동 킥보드 접근 (상대적으로 조용)
+ * 
+ * 향후 TensorFlow Lite ML 모델로 교체 예정
+ */
+const classifyThreat = (rms: number): string => {
+  if (rms > 0.4) {
+    return '차량 접근 감지';
+  } else if (rms > 0.25) {
+    return '오토바이 접근 감지';
+  } else {
+    return '전동 킥보드 접근 감지';
+  }
+};
+
 const analyzeBuffer = (data: AudioBufferEvent) => {
   try {
     if (!data || typeof data.rms !== 'number') {
@@ -59,7 +77,9 @@ const analyzeBuffer = (data: AudioBufferEvent) => {
         consecutiveDetections = 0;
         triggerAlert();
         if (onThreatCallback) {
-          onThreatCallback(`위험음 감지 (RMS: ${averageRMS.toFixed(3)}, 연속: ${CONSECUTIVE_DETECTIONS_REQUIRED}회)`);
+          // RMS 강도에 따라 위험 유형 추정
+          const threatType = classifyThreat(averageRMS);
+          onThreatCallback(threatType);
         }
       }
     } else {

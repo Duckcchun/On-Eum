@@ -1,197 +1,169 @@
-# 온음 (On-Eum)
+# 🎧 온음 (On-Eum)
 
-에어팟 노이즈 캔슬링 보행자를 위한 킥보드/차량 위험음 감지 iOS 앱 MVP
+> 에어팟 노이즈 캔슬링 사용자를 위한 AI 위험음 감지 iOS 앱
 
-## 기술 스택
+에어팟으로 음악을 들으며 걷는 보행자에게 전동 킥보드, 오토바이, 차량의 접근 소리를 실시간으로 감지하여 **0.2초 이내에 햅틱 진동 + 경고음**으로 알려줍니다.
 
-- React Native (Bare Workflow)
-- iOS Native Module (Swift)
-- TensorFlow Lite (예정)
+---
 
-## 요구 사항
+## ✨ 주요 기능
 
-- macOS (Ventura 이상 권장)
-- Xcode 15+
-- Node.js 18+
-- CocoaPods
-- 실제 iPhone 기기 (시뮬레이터에서는 마이크/햅틱 불가)
+| 기능 | 설명 |
+|------|------|
+| 🎙️ 실시간 오디오 분석 | 마이크로 주변 소리를 0.1초 단위로 캡처하고 RMS 기반 분석 |
+| 🛴 위험 유형 분류 | RMS 강도로 킥보드 / 오토바이 / 차량 자동 구분 |
+| 📳 즉각 경고 | 강한 햅틱 진동 (3연타) + 오디오 덕킹 + 경고음 재생 |
+| 📊 감지 통계 | 총 감지 횟수, 활동 시간, 안전 점수, 인사이트 분석 |
+| 📋 감지 기록 | 날짜별 그룹핑, 위험등급 태그, CSV 내보내기 |
+| 💾 데이터 영속성 | 앱 종료 후에도 로그와 통계 유지 (AsyncStorage) |
+| 🧪 시뮬레이션 | 개발 테스트용 4가지 위험 유형 시뮬레이션 |
 
-## 빠른 시작
+---
 
-```bash
-git clone -b feat/mvp-full-implementation https://github.com/Duckcchun/On-Eum.git
-cd On-Eum
-chmod +x setup.sh
-./setup.sh
+## 🛠 기술 스택
+
+| 구분 | 기술 |
+|------|------|
+| 프레임워크 | React Native 0.73.4 (Bare Workflow, TypeScript) |
+| 네이티브 | Swift + Objective-C 브릿징 (iOS) |
+| 오디오 | AVFoundation (AVAudioEngine 실시간 캡처) |
+| 저장소 | AsyncStorage (설정, 로그, 통계 영속성) |
+| 로그 내보내기 | react-native-fs (CSV) |
+| 예정 | TensorFlow Lite (ML 기반 소리 분류) |
+
+---
+
+## 📱 화면 구조
+
+```
+App.tsx
+├── SplashScreen (레이더 애니메이션)
+├── Onboarding (4슬라이드 소개)
+└── MainApp (탭 네비게이션)
+    ├── 🏠 홈 (HomeScreen)
+    │   ├── 레이더 원형 애니메이션 (SAFE/DANGER)
+    │   ├── 위험 감지 시 상세 카드 (ThreatDetailCard)
+    │   ├── 상태 카드 (AirPods/청취/감지)
+    │   ├── 최근 감지 로그
+    │   └── 시뮬레이션 패널
+    ├── 🕐 기록 (HistoryScreen)
+    │   ├── 날짜별 그룹핑 로그
+    │   ├── 위험등급 태그 (위험/주의)
+    │   └── CSV 내보내기
+    ├── 📊 통계 (StatsScreen)
+    │   ├── 안전 점수/감지 횟수/활동 시간
+    │   ├── 위험 유형 분석 (킥보드/오토바이)
+    │   └── 인사이트 카드
+    └── ⚙️ 설정 (SettingsScreen)
+        ├── 감지 민감도 (높음/보통/낮음)
+        ├── 알림 방식 (햅틱/오디오 토글)
+        └── 일반 설정
 ```
 
-## 수동 셋업
+---
 
-```bash
-npm install
-cd ios && pod install && cd ..
-```
-
-## 실행
-
-### 터미널
-
-```bash
-npx react-native run-ios --device
-```
-
-### Xcode
-
-1. `ios/OnEum.xcworkspace` 를 Xcode로 열기
-2. 실제 iPhone 기기 연결
-3. Signing & Capabilities 에서 본인 Apple ID 팀 선택
-4. Build & Run
-
-## 경고음 파일 추가
-
-`ios/OnEum/warning_beep.mp3` 경로에 경고 비프음 파일을 넣어주세요.
-Xcode에서 Build Phases → Copy Bundle Resources 에 추가되어 있어야 합니다.
-
-## 프로젝트 구조
+## 🏗 프로젝트 구조
 
 ```
 On-Eum/
-├── App.tsx                     앱 진입점
+├── App.tsx                          앱 진입점 + 탭 네비게이션
 ├── src/
+│   ├── context/
+│   │   └── AppContext.tsx           전역 상태 관리 (감지, 로그, 설정, 영속성)
+│   ├── navigation/
+│   │   └── TabBar.tsx               커스텀 하단 탭바 (애니메이션)
 │   ├── screens/
-│   │   ├── Dashboard.tsx       메인 화면 (토글, 로그, 통계)
-│   │   ├── Settings.tsx        설정 화면 (임계값, 알림 방식)
-│   │   ├── Onboarding.tsx      온보딩 화면
-│   │   └── Statistics.tsx      통계 화면
+│   │   ├── HomeScreen.tsx           메인 홈 화면
+│   │   ├── HistoryScreen.tsx        감지 기록 화면
+│   │   ├── StatsScreen.tsx          통계 분석 화면
+│   │   ├── SettingsScreen.tsx       설정 화면
+│   │   └── Onboarding.tsx           온보딩 화면
 │   ├── native/
-│   │   └── AudioBufferModule.ts  Native Bridge JS 래퍼
+│   │   └── AudioBufferModule.ts     네이티브 브릿지 JS 래퍼
 │   └── services/
-│       ├── AlertService.ts     경고 트리거 (Haptic + Ducking)
-│       └── ThreatDetector.ts   위협 판별 로직
+│       ├── AlertService.ts          경고 트리거 (Haptic + Ducking)
+│       └── ThreatDetector.ts        위협 판별 + 유형 분류 로직
 └── ios/OnEum/
-    ├── AudioBufferManager.swift  마이크 버퍼 수집 (0.1초 단위)
-    ├── AlertActionManager.swift  Haptic 진동 + Audio Ducking
-    ├── AppDelegate.swift         앱 시작점
-    └── Info.plist                권한 설정
+    ├── AudioBufferManager.swift     마이크 버퍼 수집 (AVAudioEngine)
+    ├── AlertActionManager.swift     Haptic 진동 + Audio Ducking
+    ├── AppDelegate.swift            앱 시작점
+    └── Info.plist                   권한 설정 (마이크, 백그라운드 오디오)
 ```
 
-## 동작 흐름
+---
 
-1. 안전 모드 ON → 마이크 수집 시작
-2. AudioBufferManager가 0.1초 간격으로 오디오 버퍼를 JS로 전달
-3. ThreatDetector가 RMS 임계값 기반으로 위험 판별
-4. 위험 감지 시 0.2초 이내:
-   - 강한 Haptic 진동 (3연타)
-   - 음악 볼륨 자동 감소 (Audio Ducking)
-   - warning_beep.mp3 최대 볼륨 재생
-5. 3초 후 자동 복원
+## ⚡ 동작 흐름
 
-## 현재 구현된 기능 및 완성도
+```
+사용자 보호 모드 ON
+  → AudioBufferManager (Swift): AVAudioEngine 마이크 캡처 시작
+    → 0.1초마다 RMS 계산 → JS로 이벤트 전송
+  → ThreatDetector (JS): 오디오 분석
+    → 5개 이동평균 필터링
+    → 연속 3회 임계값 초과 감지
+    → classifyThreat(): RMS 강도로 유형 분류
+      → > 0.4: 차량
+      → > 0.25: 오토바이
+      → else: 킥보드
+  → AlertService: 즉각 경고
+    → 햅틱 3연타 진동
+    → 오디오 덕킹 (음악 볼륨 ↓)
+    → warning_beep.mp3 재생
+    → 5초 후 자동 해제 / 수동 해제 가능
+```
 
-### ✅ 완성된 기능 (MVP 수준)
+---
 
-**1. 네이티브 오디오 처리**
-- iOS Swift 네이티브 모듈 (AudioBufferManager) 구현
-- 실시간 오디오 버퍼 수집 (0.1초 간격)
-- RMS 기반 소음 레벨 계산
-- React Native 브릿지를 통한 JavaScript 데이터 전달
-- 오디오 포맷 불일치 오류 해결
+## 🚀 시작하기
 
-**2. 위협 감지 시스템**
-- 임계값 기반 위험 판별 로직
-- 실시간 감지 로그 기록
-- 감지 통계 추적 (총 감지 횟수, 활동 시간)
-- 연속 감지 필터링 (오탐지 감소)
-- 이동 평균 필터링
+### 요구 사항
 
-**3. 경고 알림 시스템**
-- 햅틱 피드백 (3단계 진동 패턴)
-- 오디오 덕킹 (음악 볼륨 자동 감소)
-- 경고음 재생 (warning_beep.mp3)
-- 자동 복원 기능 (3초 후)
+- macOS (Ventura 이상)
+- Xcode 15+
+- Node.js 18+
+- CocoaPods
+- **실제 iPhone 기기** (시뮬레이터에서는 마이크/햅틱 불가)
 
-**4. 사용자 인터페이스**
-- 현대적인 다크 테마 디자인
-- 실시간 상태 표시 (활성/대기)
-- 통계 카드 (감지 횟수, 활동 시간, 임계값)
-- 감지 로그 히스토리
-- 부드러운 애니메이션 및 트랜지션
-- 스플래시 스크린 (AI Radar 테마)
-- 온보딩 화면
-- 설정 화면 (임계값, 알림 방식, 민감도)
-- 통계 화면
-- 화면 플래시 효과
-- 로그 슬라이드인 애니메이션
-
-**5. iOS 네이티브 통합**
-- 완전한 iOS 네이티브 모듈 구조
-- CocoaPods 의존성 관리
-- 마이크 권한 설정
-- 백그라운드 오디오 모드 지원
-- 앱 아이콘 적용
-
-**6. 사용자 설정**
-- 감지 임계값 조절 (0.05 ~ 0.30)
-- 감지 민감도 빠른 설정 (낮음/중간/높음)
-- 햅틱 진동 토글
-- 오디오 알림 토글
-- AsyncStorage를 통한 설정 저장
-- 온보딩 리셋 기능
-
-### 🚧 제한 사항 및 개선 필요 사항
-
-**1. 감지 정확도**
-- 현재는 단순 RMS 임계값 기반 감지
-- TensorFlow Lite ML 모델 통합 예정 (킥보드/차량 음향 패턴 학습)
-- 오탐지 감소를 위한 필터링 로직 필요
-
-**2. 오디오 재생**
-- warning_beep.mp3 파일이 Xcode 프로젝트에 추가되어야 함
-- 현재 일부 환경에서 오디오 재생 불안정
-
-**3. 플랫폼 지원**
-- 현재 iOS 전용
-- Android 버전 개발 필요
-
-**4. 배포**
-- App Store 배포 준비 필요
-- 코드 사이닝 및 프로비저닝 설정
-
-### 📊 완성도 평가
-
-- **코어 기능**: 95% (오디오 처리, 감지, 알림 완료, 필터링 추가)
-- **UI/UX**: 95% (현대적인 디자인, 온보딩, 설정, 통계 화면 완료)
-- **네이티브 통합**: 95% (iOS 네이티브 모듈 완성, 오디오 포맷 오류 해결)
-- **ML/AI**: 0% (TensorFlow Lite 통합 예정)
-- **플랫폼 지원**: 50% (iOS 완료, Android 미개발)
-- **전체 MVP 완성도**: 85%
-
-### 🎯 다음 단계
-
-1. TensorFlow Lite 모델 통합 (킥보드/차량 음향 분류)
-2. 감지 정확도 개선 (고급 필터링 알고리즘)
-3. Android 네이티브 모듈 개발
-4. 배포 준비 (테스트, 코드 사이닝)
-
-## Xcode 프로젝트 생성 (최초 1회)
-
-이 레포는 `.xcodeproj`가 포함되어 있지 않습니다.
-아래 방법으로 프로젝트를 생성한 뒤 소스를 연결하세요:
+### 설치 및 실행
 
 ```bash
-npx react-native init OnEum --template react-native-template-typescript
+# 클론
+git clone https://github.com/Duckcchun/On-Eum.git
+cd On-Eum
+
+# 의존성 설치
+npm install
+cd ios && pod install && cd ..
+
+# 실행 (실제 기기 연결 필요)
+npx react-native run-ios --device
 ```
 
-생성된 프로젝트의 `ios/` 폴더에 이 레포의 Swift/ObjC 파일을 복사합니다:
-- `AudioBufferManager.swift` / `.m`
-- `AlertActionManager.swift` / `.m`
-- `AppDelegate.swift`
-- `OnEum-Bridging-Header.h`
-- `Info.plist` (내용 병합)
-- `LaunchScreen.storyboard`
+### Xcode로 실행
 
-그 다음 `pod install` 을 다시 실행합니다.
+1. `ios/OnEum.xcworkspace` 열기
+2. 실제 iPhone 연결
+3. Signing → 본인 Apple ID 팀 선택
+4. Build & Run
 
-## 라이선스
+---
+
+## 📊 완성도
+
+| 영역 | 상태 | 비고 |
+|------|------|------|
+| 네이티브 오디오 처리 | ✅ 완료 | AVAudioEngine, RMS 계산 |
+| 위협 감지 시스템 | ✅ 완료 | 이동평균 + 연속감지 + 유형분류 |
+| 경고 알림 시스템 | ✅ 완료 | 햅틱 + 오디오 덕킹 + 경고음 |
+| UI/UX | ✅ 완료 | 탭 네비게이션, 레이더, 카드 UI |
+| 데이터 영속성 | ✅ 완료 | AsyncStorage (로그, 통계, 설정) |
+| 시뮬레이션 | ✅ 완료 | 4가지 위험 유형 테스트 |
+| ML 기반 분류 | 🚧 예정 | TensorFlow Lite 모델 통합 |
+| 방향/거리 감지 | 🚧 예정 | 스테레오 마이크 활용 |
+| Android | 🚧 예정 | 네이티브 모듈 개발 필요 |
+
+---
+
+## 📄 라이선스
 
 MIT

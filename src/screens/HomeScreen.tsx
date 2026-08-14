@@ -319,6 +319,7 @@ const HomeScreen: React.FC = () => {
     toggleDetection,
     dismissDetection,
     simulateThreat,
+    navigateToTab,
   } = useApp();
   const flashAnim = useRef(new Animated.Value(0)).current;
   const [showSimPanel, setShowSimPanel] = useState(false);
@@ -480,7 +481,9 @@ const HomeScreen: React.FC = () => {
           <View style={styles.logsSectionHeader}>
             <Text style={styles.logsSectionTitle}>최근 감지 로그</Text>
             {logs.length > 0 && (
-              <Text style={styles.logsSeeAll}>전체 보기 ›</Text>
+              <TouchableOpacity onPress={() => navigateToTab('history')}>
+                <Text style={styles.logsSeeAll}>전체 보기 ›</Text>
+              </TouchableOpacity>
             )}
           </View>
 

@@ -3,6 +3,7 @@ import { triggerAlert, updateAlertSettings } from '../services/AlertService';
 import { startDetection, stopDetection } from '../services/ThreatDetector';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// ─── Types ───
 export interface DetectionLog {
   id: string;
   type: string;
@@ -18,19 +19,19 @@ export interface AppSettings {
   sensitivity: 'low' | 'medium' | 'high';
 }
 
+export interface ThreatInfo {
+  type: string;
+  icon: string;
+  severity: 'danger' | 'warning' | 'info';
+  detectedAt: string;
+}
+
 interface AppState {
   isActive: boolean;
   isDetecting: boolean;
   logs: DetectionLog[];
   stats: { totalDetections: number; activeTime: number; todayDetections: number };
   settings: AppSettings;
-}
-
-export interface ThreatInfo {
-  type: string;
-  icon: string;
-  severity: 'danger' | 'warning' | 'info';
-  detectedAt: string;
 }
 
 interface AppContextType extends AppState {
@@ -40,6 +41,8 @@ interface AppContextType extends AppState {
   clearLogs: () => void;
   dismissDetection: () => void;
   simulateThreat: (threatType?: 'kickboard' | 'motorcycle' | 'vehicle' | 'horn') => void;
+  navigateToTab: (tab: string) => void;
+  setTabNavigator: (fn: (tab: string) => void) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -48,6 +51,13 @@ export const useApp = () => {
   const context = useContext(AppContext);
   if (!context) throw new Error('useApp must be used within AppProvider');
   return context;
+};
+
+// ─── Storage Keys ───
+const STORAGE_KEYS = {
+  LOGS: 'onEum_logs',
+  STATS: 'onEum_stats',
+  SETTINGS: 'onEumSettings',
 };
 
 // ─── Threat type definitions ───
@@ -74,6 +84,7 @@ const THREAT_TYPES = {
   },
 };
 
+// ─── Provider ───
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isActive, setIsActive] = useState(false);
   const [isDetecting, setIsDetecting] = useState(false);
@@ -88,34 +99,67 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const detectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const tabNavigatorRef = useRef<((tab: string) => void) | null>(null);
 
-  // Load settings on mount
+  // ─── Load persisted data on mount ───
   useEffect(() => {
-    loadSettings();
+    loadPersistedData();
   }, []);
 
-  // Active time counter
+  // ─── Active time counter ───
   useEffect(() => {
     if (isActive) {
       timerRef.current = setInterval(() => {
-        setStats(prev => ({ ...prev, activeTime: prev.activeTime + 1 }));
+        setStats(prev => {
+          const updated = { ...prev, activeTime: prev.activeTime + 1 };
+          // Save stats every 30 seconds to avoid excessive writes
+          if (updated.activeTime % 30 === 0) {
+            persistStats(updated);
+          }
+          return updated;
+        });
       }, 1000);
     } else {
       if (timerRef.current) {
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
+      // Persist when going inactive
+      persistStats(stats);
     }
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [isActive]);
 
-  const loadSettings = async () => {
+  // ─── Persistence functions ───
+  const loadPersistedData = async () => {
     try {
-      const saved = await AsyncStorage.getItem('onEumSettings');
-      if (saved) {
-        const parsed = JSON.parse(saved);
+      const [savedLogs, savedStats, savedSettings] = await Promise.all([
+        AsyncStorage.getItem(STORAGE_KEYS.LOGS),
+        AsyncStorage.getItem(STORAGE_KEYS.STATS),
+        AsyncStorage.getItem(STORAGE_KEYS.SETTINGS),
+      ]);
+
+      if (savedLogs) {
+        const parsed = JSON.parse(savedLogs);
+        setLogs(parsed);
+      }
+
+      if (savedStats) {
+        const parsed = JSON.parse(savedStats);
+        // Reset todayDetections if it's a new day
+        const today = new Date().toLocaleDateString('ko-KR');
+        const lastDate = parsed.lastDate || '';
+        setStats({
+          totalDetections: parsed.totalDetections || 0,
+          activeTime: parsed.activeTime || 0,
+          todayDetections: lastDate === today ? (parsed.todayDetections || 0) : 0,
+        });
+      }
+
+      if (savedSettings) {
+        const parsed = JSON.parse(savedSettings);
         setSettings(parsed);
         updateAlertSettings({
           hapticEnabled: parsed.hapticEnabled,
@@ -123,10 +167,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         });
       }
     } catch (error) {
-      console.error('Failed to load settings:', error);
+      console.error('[AppContext] Failed to load persisted data:', error);
     }
   };
 
+  const persistLogs = async (logsToSave: DetectionLog[]) => {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.LOGS, JSON.stringify(logsToSave));
+    } catch (error) {
+      console.error('[AppContext] Failed to persist logs:', error);
+    }
+  };
+
+  const persistStats = async (statsToSave: typeof stats) => {
+    try {
+      const today = new Date().toLocaleDateString('ko-KR');
+      await AsyncStorage.setItem(
+        STORAGE_KEYS.STATS,
+        JSON.stringify({ ...statsToSave, lastDate: today })
+      );
+    } catch (error) {
+      console.error('[AppContext] Failed to persist stats:', error);
+    }
+  };
+
+  // ─── Tab Navigation ───
+  const setTabNavigator = useCallback((fn: (tab: string) => void) => {
+    tabNavigatorRef.current = fn;
+  }, []);
+
+  const navigateToTab = useCallback((tab: string) => {
+    if (tabNavigatorRef.current) {
+      tabNavigatorRef.current(tab);
+    }
+  }, []);
+
+  // ─── Detection & Logging ───
   const addLog = useCallback((type: string) => {
     const now = new Date();
     const newLog: DetectionLog = {
@@ -144,18 +220,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // Set current threat info
     const threatInfo: ThreatInfo = {
       type: newLog.type,
-      icon: type.includes('킥보드') ? '🛴' : type.includes('오토바이') ? '🏍️' : type.includes('차량') ? '🚗' : type.includes('경적') ? '📢' : '⚠️',
+      icon: type.includes('킥보드') ? '🛴'
+        : type.includes('오토바이') ? '🏍️'
+        : type.includes('차량') ? '🚗'
+        : type.includes('경적') ? '📢'
+        : '⚠️',
       severity: newLog.severity,
       detectedAt: now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
     };
 
     setCurrentThreat(threatInfo);
-    setLogs(prev => [newLog, ...prev].slice(0, 100));
-    setStats(prev => ({
-      ...prev,
-      totalDetections: prev.totalDetections + 1,
-      todayDetections: prev.todayDetections + 1,
-    }));
+
+    setLogs(prev => {
+      const updated = [newLog, ...prev].slice(0, 100);
+      persistLogs(updated);
+      return updated;
+    });
+
+    setStats(prev => {
+      const updated = {
+        ...prev,
+        totalDetections: prev.totalDetections + 1,
+        todayDetections: prev.todayDetections + 1,
+      };
+      persistStats(updated);
+      return updated;
+    });
+
     setIsDetecting(true);
 
     // Auto dismiss after 5 seconds
@@ -181,6 +272,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } else {
       stopDetection();
       setIsDetecting(false);
+      setCurrentThreat(null);
     }
   }, [isActive, settings, addLog]);
 
@@ -191,15 +283,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       audioEnabled: newSettings.audioEnabled,
     });
     try {
-      await AsyncStorage.setItem('onEumSettings', JSON.stringify(newSettings));
+      await AsyncStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(newSettings));
     } catch (error) {
-      console.error('Failed to save settings:', error);
+      console.error('[AppContext] Failed to save settings:', error);
     }
   }, []);
 
   const clearLogs = useCallback(() => {
     setLogs([]);
-    setStats(prev => ({ ...prev, totalDetections: 0, todayDetections: 0 }));
+    setStats(prev => {
+      const updated = { ...prev, totalDetections: 0, todayDetections: 0 };
+      persistStats(updated);
+      return updated;
+    });
+    persistLogs([]);
   }, []);
 
   const dismissDetection = useCallback(() => {
@@ -221,6 +318,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         clearLogs,
         dismissDetection,
         simulateThreat,
+        navigateToTab,
+        setTabNavigator,
       }}
     >
       {children}
