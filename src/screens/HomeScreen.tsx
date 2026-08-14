@@ -130,6 +130,67 @@ const RadarCircle: React.FC<{ isActive: boolean; isDetecting: boolean; threatIco
   );
 };
 
+// ─── Direction Indicator ───
+const DirectionIndicator: React.FC<{ direction: number }> = ({ direction }) => {
+  // direction: -1.0 (left) ~ 0.0 (center) ~ 1.0 (right)
+  const getDirectionLabel = () => {
+    if (direction < -0.3) return '좌측';
+    if (direction > 0.3) return '우측';
+    return '정면/후방';
+  };
+
+  const getDirectionIcon = () => {
+    if (direction < -0.3) return '←';
+    if (direction > 0.3) return '→';
+    return '↕';
+  };
+
+  // Indicator dot position (0% = left, 50% = center, 100% = right)
+  const dotPosition = ((direction + 1) / 2) * 100;
+
+  return (
+    <View style={styles.directionCard}>
+      <View style={styles.directionHeader}>
+        <Text style={styles.directionIcon}>🧭</Text>
+        <Text style={styles.directionTitle}>위험 방향</Text>
+      </View>
+
+      {/* Direction label */}
+      <Text style={styles.directionLabel}>
+        {getDirectionIcon()} {getDirectionLabel()}
+      </Text>
+
+      {/* Visual direction bar */}
+      <View style={styles.directionBarContainer}>
+        <Text style={styles.directionBarLabel}>L</Text>
+        <View style={styles.directionBar}>
+          {/* Center marker */}
+          <View style={styles.directionBarCenter} />
+          {/* Dot indicator */}
+          <View
+            style={[
+              styles.directionDot,
+              { left: `${Math.max(5, Math.min(95, dotPosition))}%` },
+            ]}
+          />
+          {/* Colored zone */}
+          {direction < -0.3 && (
+            <View style={[styles.directionZone, styles.directionZoneLeft, { width: `${Math.abs(direction) * 50}%` }]} />
+          )}
+          {direction > 0.3 && (
+            <View style={[styles.directionZone, styles.directionZoneRight, { width: `${Math.abs(direction) * 50}%` }]} />
+          )}
+        </View>
+        <Text style={styles.directionBarLabel}>R</Text>
+      </View>
+
+      <Text style={styles.directionNote}>
+        ※ 스테레오 마이크 기반 추정 (참고용)
+      </Text>
+    </View>
+  );
+};
+
 // ─── Threat Detail Card ───
 const ThreatDetailCard: React.FC<{
   threat: ThreatInfo;
@@ -214,6 +275,9 @@ const ThreatDetailCard: React.FC<{
           </View>
         </View>
       </View>
+
+      {/* Direction indicator */}
+      <DirectionIndicator direction={threat.direction} />
 
       {/* Dismiss button */}
       <View style={styles.threatActions}>
@@ -775,6 +839,96 @@ const styles = StyleSheet.create({
     height: 6,
     borderRadius: 3,
     backgroundColor: '#F59E0B',
+  },
+
+  // Direction Indicator
+  directionCard: {
+    backgroundColor: 'rgba(59, 130, 246, 0.06)',
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.15)',
+  },
+  directionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  directionIcon: {
+    fontSize: 16,
+  },
+  directionTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#94A3B8',
+  },
+  directionLabel: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: 12,
+  },
+  directionBarContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 8,
+  },
+  directionBarLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748B',
+    width: 14,
+    textAlign: 'center',
+  },
+  directionBar: {
+    flex: 1,
+    height: 8,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 4,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  directionBarCenter: {
+    position: 'absolute',
+    left: '50%',
+    top: 0,
+    bottom: 0,
+    width: 2,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    marginLeft: -1,
+  },
+  directionDot: {
+    position: 'absolute',
+    top: -2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#3B82F6',
+    marginLeft: -6,
+    borderWidth: 2,
+    borderColor: '#1E40AF',
+  },
+  directionZone: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    borderRadius: 4,
+  },
+  directionZoneLeft: {
+    right: '50%',
+    backgroundColor: 'rgba(239, 68, 68, 0.25)',
+  },
+  directionZoneRight: {
+    left: '50%',
+    backgroundColor: 'rgba(239, 68, 68, 0.25)',
+  },
+  directionNote: {
+    fontSize: 11,
+    color: '#475569',
+    fontStyle: 'italic',
   },
 
   // Dismiss button

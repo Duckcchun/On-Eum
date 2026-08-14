@@ -4,18 +4,32 @@ const { AlertActionManager } = NativeModules;
 
 const isIOS = Platform.OS === 'ios';
 
-interface AlertSettings {
+export interface AlertSettings {
   hapticEnabled: boolean;
   audioEnabled: boolean;
+  alertVolume: number;         // 0.0 ~ 1.0
+  hapticPattern: 'soft' | 'medium' | 'strong';
 }
 
 let currentSettings: AlertSettings = {
   hapticEnabled: true,
   audioEnabled: true,
+  alertVolume: 1.0,
+  hapticPattern: 'strong',
 };
 
-export const updateAlertSettings = (settings: AlertSettings) => {
-  currentSettings = settings;
+export const updateAlertSettings = (settings: Partial<AlertSettings>) => {
+  currentSettings = { ...currentSettings, ...settings };
+
+  // Sync native settings
+  if (isIOS && AlertActionManager) {
+    if (settings.alertVolume !== undefined) {
+      AlertActionManager.setAlertVolume(settings.alertVolume);
+    }
+    if (settings.hapticPattern !== undefined) {
+      AlertActionManager.setHapticPattern(settings.hapticPattern);
+    }
+  }
 };
 
 export const triggerAlert = () => {
@@ -57,7 +71,13 @@ export const stopAlert = () => {
   }
 };
 
+export const getAlertSettings = (): AlertSettings => {
+  return { ...currentSettings };
+};
+
 export default {
   triggerAlert,
   stopAlert,
+  updateAlertSettings,
+  getAlertSettings,
 };

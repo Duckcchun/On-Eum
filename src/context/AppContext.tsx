@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import { triggerAlert, updateAlertSettings } from '../services/AlertService';
-import { startDetection, stopDetection } from '../services/ThreatDetector';
+import { startDetection, stopDetection, getLastDirection } from '../services/ThreatDetector';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   getCurrentRoute,
@@ -25,6 +25,8 @@ export interface AppSettings {
   hapticEnabled: boolean;
   audioEnabled: boolean;
   sensitivity: 'low' | 'medium' | 'high';
+  alertVolume: number;
+  hapticPattern: 'soft' | 'medium' | 'strong';
 }
 
 export interface ThreatInfo {
@@ -32,6 +34,7 @@ export interface ThreatInfo {
   icon: string;
   severity: 'danger' | 'warning' | 'info';
   detectedAt: string;
+  direction: number; // -1.0 (left) ~ 0.0 (center) ~ 1.0 (right)
 }
 
 interface AppState {
@@ -113,6 +116,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     hapticEnabled: true,
     audioEnabled: true,
     sensitivity: 'medium',
+    alertVolume: 1.0,
+    hapticPattern: 'strong',
   });
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const detectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -302,6 +307,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         : '⚠️',
       severity: newLog.severity,
       detectedAt: now.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
+      direction: getLastDirection(),
     };
 
     setCurrentThreat(threatInfo);
@@ -356,6 +362,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     updateAlertSettings({
       hapticEnabled: newSettings.hapticEnabled,
       audioEnabled: newSettings.audioEnabled,
+      alertVolume: newSettings.alertVolume,
+      hapticPattern: newSettings.hapticPattern,
     });
     try {
       await AsyncStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(newSettings));

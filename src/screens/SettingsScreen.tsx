@@ -175,6 +175,71 @@ const SettingsScreen: React.FC = () => {
           />
         </View>
 
+        {/* Volume & Pattern Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>알림 세부 설정</Text>
+          <Text style={styles.sectionSubtitle}>
+            경고음 볼륨과 진동 패턴을 조절하세요
+          </Text>
+
+          {/* Volume slider */}
+          <View style={styles.volumeSection}>
+            <Text style={styles.volumeLabel}>🔊 경고음 볼륨</Text>
+            <View style={styles.volumeOptions}>
+              {[
+                { value: 0.3, label: '작게' },
+                { value: 0.6, label: '보통' },
+                { value: 0.8, label: '크게' },
+                { value: 1.0, label: '최대' },
+              ].map(opt => (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[
+                    styles.volumeOption,
+                    settings.alertVolume === opt.value && styles.volumeOptionActive,
+                  ]}
+                  onPress={() => updateSettings({ ...settings, alertVolume: opt.value })}
+                >
+                  <Text style={[
+                    styles.volumeOptionText,
+                    settings.alertVolume === opt.value && styles.volumeOptionTextActive,
+                  ]}>
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Haptic pattern */}
+          <View style={styles.volumeSection}>
+            <Text style={styles.volumeLabel}>📳 진동 패턴</Text>
+            <View style={styles.volumeOptions}>
+              {([
+                { value: 'soft' as const, label: '약하게', desc: '1회 진동' },
+                { value: 'medium' as const, label: '보통', desc: '2회 진동' },
+                { value: 'strong' as const, label: '강하게', desc: '4회 진동' },
+              ]).map(opt => (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[
+                    styles.volumeOption,
+                    settings.hapticPattern === opt.value && styles.volumeOptionActive,
+                  ]}
+                  onPress={() => updateSettings({ ...settings, hapticPattern: opt.value })}
+                >
+                  <Text style={[
+                    styles.volumeOptionText,
+                    settings.hapticPattern === opt.value && styles.volumeOptionTextActive,
+                  ]}>
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+
         {/* Info Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>일반</Text>
@@ -422,6 +487,42 @@ const styles = StyleSheet.create({
   aboutVersion: {
     fontSize: 12,
     color: '#475569',
+  },
+
+  // Volume/Pattern
+  volumeSection: {
+    marginBottom: 18,
+  },
+  volumeLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#94A3B8',
+    marginBottom: 10,
+  },
+  volumeOptions: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  volumeOption: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.06)',
+  },
+  volumeOptionActive: {
+    borderColor: '#10B981',
+    backgroundColor: 'rgba(16, 185, 129, 0.08)',
+  },
+  volumeOptionText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  volumeOptionTextActive: {
+    color: '#10B981',
   },
 });
 

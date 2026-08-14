@@ -222,25 +222,51 @@ class AudioBufferManager: RCTEventEmitter {
   
   // ─── Buffer Processing ───
   private func processBuffer(_ buffer: AVAudioPCMBuffer, format: AVAudioFormat) {
-    guard let channelData = buffer.floatChannelData?[0] else { return }
+    guard let channelData = buffer.floatChannelData else { return }
     
     let frameLength = Int(buffer.frameLength)
+    let channelCount = Int(format.channelCount)
     
-    // Calculate RMS
-    var rms: Float = 0
+    // Calculate RMS for channel 0 (Left / Mono)
+    let leftChannel = channelData[0]
+    var leftRMS: Float = 0
     for i in 0..<frameLength {
-      let sample = channelData[i]
-      rms += sample * sample
+      let sample = leftChannel[i]
+      leftRMS += sample * sample
     }
-    rms = sqrt(rms / Float(frameLength))
+    leftRMS = sqrt(leftRMS / Float(frameLength))
     
-    // Adaptive mode: switch buffer duration based on RMS
+    // Calculate RMS for channel 1 (Right) if stereo
+    var rightRMS: Float = leftRMS // default to same as left (mono)
+    if channelCount >= 2 {
+      let rightChannel = channelData[1]
+      var rSum: Float = 0
+      for i in 0..<frameLength {
+        let sample = rightChannel[i]
+        rSum += sample * sample
+      }
+      rightRMS = sqrt(rSum / Float(frameLength))
+    }
+    
+    // Combined RMS
+    let rms = (leftRMS + rightRMS) / 2.0
+    
+    // Direction estimation based on L/R difference
+    // -1.0 = fully left, 0.0 = center, 1.0 = fully right
+    var direction: Float = 0.0
+    let totalRMS = leftRMS + rightRMS
+    if totalRMS > 0.01 { // Only estimate direction if there's meaningful sound
+      direction = (rightRMS - leftRMS) / totalRMS
+      // Clamp to [-1, 1]
+      direction = max(-1.0, min(1.0, direction))
+    }
+    
+    // Adaptive mode logic
     if isAdaptiveMode {
-      if rms > 0.05 { // Some sound detected
+      if rms > 0.05 {
         silenceCounter = 0
         if currentBufferDuration != alertBufferDuration {
           currentBufferDuration = alertBufferDuration
-          // Don't restart tap here (causes glitch), just note the state change
           NSLog("[AudioBufferManager] Adaptive: sound detected, high accuracy mode")
         }
       } else {
@@ -254,10 +280,14 @@ class AudioBufferManager: RCTEventEmitter {
     
     // Send to JS (limit samples to reduce bridge overhead)
     let sampleCount = min(frameLength, 512)
-    let bufferData: [Float] = Array(UnsafeBufferPointer(start: channelData, count: sampleCount))
+    let bufferData: [Float] = Array(UnsafeBufferPointer(start: leftChannel, count: sampleCount))
     
     self.sendEvent(withName: "onAudioBuffer", body: [
       "rms": rms,
+      "leftRMS": leftRMS,
+      "rightRMS": rightRMS,
+      "direction": direction,  // -1.0 (left) ~ 0.0 (center) ~ 1.0 (right)
+      "channelCount": channelCount,
       "sampleRate": format.sampleRate,
       "frameLength": frameLength,
       "samples": bufferData.map { NSNumber(value: $0) },

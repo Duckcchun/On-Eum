@@ -5,6 +5,8 @@
 RCT_EXTERN_METHOD(triggerHaptic)
 RCT_EXTERN_METHOD(playWarningWithDucking)
 RCT_EXTERN_METHOD(restoreAudio)
+RCT_EXTERN_METHOD(setAlertVolume:(float)volume)
+RCT_EXTERN_METHOD(setHapticPattern:(NSString *)pattern)
 
 + (BOOL)requiresMainQueueSetup
 {

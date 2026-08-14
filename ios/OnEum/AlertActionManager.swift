@@ -6,29 +6,83 @@ import UIKit
 class AlertActionManager: NSObject {
   
   private var warningPlayer: AVAudioPlayer?
+  private var alertVolume: Float = 1.0
+  private var hapticPattern: String = "strong" // "soft", "medium", "strong"
   
+  // ─── Settings ───
+  @objc func setAlertVolume(_ volume: Float) {
+    alertVolume = max(0.0, min(1.0, volume))
+    NSLog("[AlertActionManager] Alert volume set to: \(alertVolume)")
+  }
+  
+  @objc func setHapticPattern(_ pattern: String) {
+    hapticPattern = pattern
+    NSLog("[AlertActionManager] Haptic pattern set to: \(pattern)")
+  }
+  
+  // ─── Haptic Feedback ───
   @objc func triggerHaptic() {
-    DispatchQueue.main.async {
-      let generator = UINotificationFeedbackGenerator()
-      generator.prepare()
-      generator.notificationOccurred(.error)
+    DispatchQueue.main.async { [weak self] in
+      guard let self = self else { return }
       
-      DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-        let impactGenerator = UIImpactFeedbackGenerator(style: .heavy)
-        impactGenerator.prepare()
-        impactGenerator.impactOccurred()
+      switch self.hapticPattern {
+      case "soft":
+        self.triggerSoftHaptic()
+      case "medium":
+        self.triggerMediumHaptic()
+      case "strong":
+        self.triggerStrongHaptic()
+      default:
+        self.triggerStrongHaptic()
       }
       
-      DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-        let impactGenerator = UIImpactFeedbackGenerator(style: .heavy)
-        impactGenerator.prepare()
-        impactGenerator.impactOccurred()
-      }
-      
-      NSLog("[AlertActionManager] Haptic feedback triggered")
+      NSLog("[AlertActionManager] Haptic triggered (pattern: \(self.hapticPattern))")
     }
   }
   
+  private func triggerSoftHaptic() {
+    let generator = UINotificationFeedbackGenerator()
+    generator.prepare()
+    generator.notificationOccurred(.warning)
+  }
+  
+  private func triggerMediumHaptic() {
+    let generator = UINotificationFeedbackGenerator()
+    generator.prepare()
+    generator.notificationOccurred(.error)
+    
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+      let impact = UIImpactFeedbackGenerator(style: .medium)
+      impact.prepare()
+      impact.impactOccurred()
+    }
+  }
+  
+  private func triggerStrongHaptic() {
+    let generator = UINotificationFeedbackGenerator()
+    generator.prepare()
+    generator.notificationOccurred(.error)
+    
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+      let impact = UIImpactFeedbackGenerator(style: .heavy)
+      impact.prepare()
+      impact.impactOccurred()
+    }
+    
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+      let impact = UIImpactFeedbackGenerator(style: .heavy)
+      impact.prepare()
+      impact.impactOccurred()
+    }
+    
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+      let impact = UIImpactFeedbackGenerator(style: .rigid)
+      impact.prepare()
+      impact.impactOccurred()
+    }
+  }
+  
+  // ─── Audio Alert ───
   @objc func playWarningWithDucking() {
     do {
       let session = AVAudioSession.sharedInstance()
@@ -41,17 +95,18 @@ class AlertActionManager: NSObject {
       }
       
       warningPlayer = try AVAudioPlayer(contentsOf: url)
-      warningPlayer?.volume = 1.0
+      warningPlayer?.volume = alertVolume
       warningPlayer?.numberOfLoops = 0
       warningPlayer?.prepareToPlay()
       warningPlayer?.play()
       
-      NSLog("[AlertActionManager] Warning beep played with ducking")
+      NSLog("[AlertActionManager] Warning played (volume: \(alertVolume))")
     } catch {
       NSLog("[AlertActionManager] Failed to play warning: \(error)")
     }
   }
   
+  // ─── Restore Audio ───
   @objc func restoreAudio() {
     warningPlayer?.stop()
     warningPlayer = nil
@@ -59,7 +114,7 @@ class AlertActionManager: NSObject {
     do {
       let session = AVAudioSession.sharedInstance()
       try session.setActive(false, options: .notifyOthersOnDeactivation)
-      try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth, .mixWithOthers])
+      try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth, .allowBluetoothA2DP, .mixWithOthers])
       try session.setActive(true)
       NSLog("[AlertActionManager] Audio session restored")
     } catch {

@@ -9,6 +9,10 @@ const audioBufferEmitter = isIOS && AudioBufferManager
 
 export interface AudioBufferEvent {
   rms: number;
+  leftRMS?: number;
+  rightRMS?: number;
+  direction?: number;      // -1.0 (left) ~ 0.0 (center) ~ 1.0 (right)
+  channelCount?: number;
   sampleRate: number;
   frameLength: number;
   samples: number[];
