@@ -1,39 +1,53 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { SafeAreaView, View, Text, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet, Animated, StatusBar } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Dashboard from './src/screens/Dashboard';
+import { AppProvider } from './src/context/AppContext';
+import TabBar, { TabName } from './src/navigation/TabBar';
+import HomeScreen from './src/screens/HomeScreen';
+import HistoryScreen from './src/screens/HistoryScreen';
+import StatsScreen from './src/screens/StatsScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
 import Onboarding from './src/screens/Onboarding';
 
-const SplashScreen = () => {
+// ─── Splash Screen ───
+const SplashScreen: React.FC = () => {
   const radarAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
 
   useEffect(() => {
-    // 레이더 파동 애니메이션
-    Animated.timing(radarAnim, {
-      toValue: 1,
-      duration: 1500,
-      useNativeDriver: true,
-    }).start();
-
-    // 텍스트 페이드인
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 800,
-      delay: 300,
-      useNativeDriver: true,
-    }).start();
+    Animated.parallel([
+      Animated.timing(radarAnim, {
+        toValue: 1,
+        duration: 1500,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        tension: 40,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        delay: 400,
+        useNativeDriver: true,
+      }),
+    ]).start();
   }, []);
 
   return (
-    <View style={styles.container}>
-      {/* 레이더 파동 */}
-      <View style={styles.radarContainer}>
+    <View style={splashStyles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#0B1120" />
+
+      {/* Radar Waves */}
+      <View style={splashStyles.radarContainer}>
         {[0, 1, 2].map((index) => (
           <Animated.View
             key={index}
             style={[
-              styles.radarWave,
+              splashStyles.radarWave,
               {
                 transform: [
                   {
@@ -45,52 +59,80 @@ const SplashScreen = () => {
                 ],
                 opacity: radarAnim.interpolate({
                   inputRange: [0, 1],
-                  outputRange: [0.8 - index * 0.2, 0],
+                  outputRange: [0.6 - index * 0.15, 0],
                 }),
               },
             ]}
           />
         ))}
-        
-        {/* 아이콘 */}
-        <View style={styles.iconContainer}>
-          <Text style={styles.icon}>🎧</Text>
-        </View>
+
+        {/* Center Icon */}
+        <Animated.View
+          style={[splashStyles.iconContainer, { transform: [{ scale: scaleAnim }] }]}
+        >
+          <Text style={splashStyles.icon}>🎧</Text>
+        </Animated.View>
       </View>
 
-      {/* 텍스트 */}
-      <Animated.View style={{ opacity: fadeAnim }}>
-        <Text style={styles.title}>온음</Text>
-        <Text style={styles.subtitle}>AI Noise Detection</Text>
-        <Text style={styles.subtitle}>& Safety Alert</Text>
+      {/* Text */}
+      <Animated.View style={[splashStyles.textContainer, { opacity: fadeAnim }]}>
+        <Text style={splashStyles.title}>온음</Text>
+        <Text style={splashStyles.subtitle}>AI 위험음 감지 시스템</Text>
       </Animated.View>
     </View>
   );
 };
 
-const App = () => {
-  const [showOnboarding, setShowOnboarding] = useState(true);
-  const [isLoading, setIsLoading] = useState(true);
+// ─── Main App Navigator ───
+const MainApp: React.FC = () => {
+  const [activeTab, setActiveTab] = useState<TabName>('home');
+
+  const renderScreen = () => {
+    switch (activeTab) {
+      case 'home':
+        return <HomeScreen />;
+      case 'history':
+        return <HistoryScreen />;
+      case 'stats':
+        return <StatsScreen />;
+      case 'settings':
+        return <SettingsScreen />;
+      default:
+        return <HomeScreen />;
+    }
+  };
+
+  return (
+    <View style={mainStyles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#0B1120" />
+      <View style={mainStyles.screen}>{renderScreen()}</View>
+      <TabBar activeTab={activeTab} onTabChange={setActiveTab} />
+    </View>
+  );
+};
+
+// ─── Root App ───
+const App: React.FC = () => {
   const [showSplash, setShowSplash] = useState(true);
-  const [resetOnboarding, setResetOnboarding] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     checkOnboardingStatus();
-    
-    // 스플래시 스크린 2초 후 숨기기
+
     const splashTimer = setTimeout(() => {
       setShowSplash(false);
-    }, 2000);
+    }, 2200);
 
     return () => clearTimeout(splashTimer);
-  }, [resetOnboarding]);
+  }, []);
 
   const checkOnboardingStatus = async () => {
     try {
-      const onboardingCompleted = await AsyncStorage.getItem('onboardingCompleted');
-      setShowOnboarding(!onboardingCompleted);
+      const completed = await AsyncStorage.getItem('onboardingCompleted');
+      setShowOnboarding(!completed);
     } catch (error) {
-      console.error('Error checking onboarding status:', error);
+      console.error('Error checking onboarding:', error);
       setShowOnboarding(false);
     } finally {
       setIsLoading(false);
@@ -101,36 +143,30 @@ const App = () => {
     setShowOnboarding(false);
   };
 
-  const handleResetOnboarding = () => {
-    setResetOnboarding(prev => !prev);
-  };
-
   if (showSplash) {
     return <SplashScreen />;
   }
 
   if (isLoading) {
-    return null;
+    return <View style={{ flex: 1, backgroundColor: '#0B1120' }} />;
+  }
+
+  if (showOnboarding) {
+    return <Onboarding onComplete={handleOnboardingComplete} />;
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      {showOnboarding ? (
-        <Onboarding onComplete={handleOnboardingComplete} />
-      ) : (
-        <Dashboard onResetOnboarding={handleResetOnboarding} />
-      )}
-    </SafeAreaView>
+    <AppProvider>
+      <MainApp />
+    </AppProvider>
   );
 };
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-  },
+// ─── Styles ───
+const splashStyles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#0B1120',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -147,31 +183,45 @@ const styles = StyleSheet.create({
     borderRadius: 60,
     borderWidth: 2,
     borderColor: '#10B981',
-    backgroundColor: 'transparent',
   },
   iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: 'rgba(16, 185, 129, 0.1)',
+    borderWidth: 2,
+    borderColor: 'rgba(16, 185, 129, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   icon: {
     fontSize: 40,
   },
+  textContainer: {
+    alignItems: 'center',
+  },
   title: {
-    fontSize: 42,
-    fontWeight: '800',
-    color: '#10B981',
+    fontSize: 44,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: -1,
     marginBottom: 8,
-    textAlign: 'center',
   },
   subtitle: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    textAlign: 'center',
+    fontSize: 15,
+    color: '#6EE7B7',
+    fontWeight: '600',
     letterSpacing: 1,
+  },
+});
+
+const mainStyles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#0B1120',
+  },
+  screen: {
+    flex: 1,
   },
 });
 
