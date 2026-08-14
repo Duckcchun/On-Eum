@@ -14,10 +14,11 @@ import { useApp, ThreatInfo } from '../context/AppContext';
 const { width } = Dimensions.get('window');
 
 // ─── Radar Animation Component ───
-const RadarCircle: React.FC<{ isActive: boolean; isDetecting: boolean; threatIcon?: string }> = ({
+const RadarCircle: React.FC<{ isActive: boolean; isDetecting: boolean; threatIcon?: string; onPress?: () => void }> = ({
   isActive,
   isDetecting,
   threatIcon,
+  onPress,
 }) => {
   const pulse1 = useRef(new Animated.Value(0)).current;
   const pulse2 = useRef(new Animated.Value(0)).current;
@@ -100,8 +101,10 @@ const RadarCircle: React.FC<{ isActive: boolean; isDetecting: boolean; threatIco
       {isActive && renderPulse(pulse2, 200)}
       {isActive && renderPulse(pulse3, 200)}
 
-      {/* Center circle */}
-      <View
+      {/* Center circle - TOUCHABLE */}
+      <TouchableOpacity
+        onPress={onPress}
+        activeOpacity={0.8}
         style={[
           styles.radarCenter,
           {
@@ -126,7 +129,7 @@ const RadarCircle: React.FC<{ isActive: boolean; isDetecting: boolean; threatIco
         <Text style={[styles.radarSubStatus, { color: isDetecting ? '#FCA5A5' : isActive ? '#6EE7B7' : '#6B7280' }]}>
           {isDetecting ? '위험 감지됨' : isActive ? 'Listening...' : '비활성'}
         </Text>
-      </View>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -483,6 +486,7 @@ const HomeScreen: React.FC = () => {
           isActive={isActive}
           isDetecting={isDetecting}
           threatIcon={currentThreat?.icon}
+          onPress={toggleDetection}
         />
 
         {/* Threat Detail Card - shown during detection */}
