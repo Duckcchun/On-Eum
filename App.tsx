@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, StatusBar } from 'react-native';
+import { View, Text, StyleSheet, Animated, StatusBar, SafeAreaView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppProvider, useApp } from './src/context/AppContext';
+import { HomeScreenSkeleton } from './src/components/Skeleton';
 import TabBar, { TabName } from './src/navigation/TabBar';
 import HomeScreen from './src/screens/HomeScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
-import MapScreen from './src/screens/MapScreen';
 import StatsScreen from './src/screens/StatsScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import Onboarding from './src/screens/Onboarding';
@@ -122,26 +122,34 @@ const PermissionGate: React.FC<{ children: React.ReactNode }> = ({ children }) =
 
 // Separate component to access AppContext (inside AppProvider)
 const MainScreen: React.FC<{ activeTab: TabName; setActiveTab: (tab: TabName) => void }> = ({ activeTab, setActiveTab }) => {
-  const { setTabNavigator } = useApp();
+  const { setTabNavigator, isLoaded } = useApp();
 
   useEffect(() => {
     setTabNavigator((tab: string) => setActiveTab(tab as TabName));
   }, [setTabNavigator, setActiveTab]);
 
-  switch (activeTab) {
-    case 'home':
-      return <HomeScreen />;
-    case 'history':
-      return <HistoryScreen />;
-    case 'map':
-      return <MapScreen />;
-    case 'stats':
-      return <StatsScreen />;
-    case 'settings':
-      return <SettingsScreen />;
-    default:
-      return <HomeScreen />;
+  if (!isLoaded) {
+    return <HomeScreenSkeleton />;
   }
+
+  return (
+    <SafeAreaView style={mainStyles.screen}>
+      {(() => {
+        switch (activeTab) {
+          case 'home':
+            return <HomeScreen />;
+          case 'history':
+            return <HistoryScreen />;
+          case 'stats':
+            return <StatsScreen />;
+          case 'settings':
+            return <SettingsScreen />;
+          default:
+            return <HomeScreen />;
+        }
+      })()}
+    </SafeAreaView>
+  );
 };
 
 // ─── Root App ───

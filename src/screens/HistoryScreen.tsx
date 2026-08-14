@@ -6,6 +6,7 @@ import {
   FlatList,
   TouchableOpacity,
   Alert,
+  SafeAreaView,
 } from 'react-native';
 import { useApp, DetectionLog } from '../context/AppContext';
 import RNFS from 'react-native-fs';
@@ -81,7 +82,7 @@ const HistoryScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>감지 기록</Text>
@@ -144,7 +145,7 @@ const HistoryScreen: React.FC = () => {
           </Text>
         </View>
       )}
-    </View>
+    </SafeAreaView>
   );
 };
 
@@ -152,7 +153,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0B1120',
-    paddingTop: 60,
   },
   header: {
     flexDirection: 'row',

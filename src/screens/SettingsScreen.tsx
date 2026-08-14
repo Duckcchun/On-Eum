@@ -281,7 +281,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 60,
+    paddingTop: 16,
     paddingBottom: 30,
   },
   title: {
@@ -359,6 +359,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.06)',
+    minHeight: 72,
   },
   sensitivityActive: {
     borderColor: '#10B981',
@@ -417,6 +418,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 14,
+    minHeight: 52,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.04)',
   },
@@ -507,10 +509,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(255,255,255,0.04)',
     borderRadius: 12,
-    paddingVertical: 12,
+    paddingVertical: 14,
     alignItems: 'center',
     borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.06)',
+    minHeight: 44,
+    justifyContent: 'center',
   },
   volumeOptionActive: {
     borderColor: '#10B981',

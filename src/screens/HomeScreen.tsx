@@ -7,6 +7,7 @@ import {
   Animated,
   Dimensions,
   ScrollView,
+  SafeAreaView,
 } from 'react-native';
 import { useApp, ThreatInfo } from '../context/AppContext';
 
@@ -421,11 +422,12 @@ const HomeScreen: React.FC = () => {
         pointerEvents="none"
       />
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+      <SafeAreaView style={styles.safeArea}>
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
         {/* Header */}
         <View style={styles.header}>
           <View>
@@ -437,6 +439,7 @@ const HomeScreen: React.FC = () => {
           {/* Protection mode badge */}
           <TouchableOpacity
             onPress={toggleDetection}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             style={[
               styles.modeBadge,
               {
@@ -517,8 +520,8 @@ const HomeScreen: React.FC = () => {
           </View>
         )}
 
-        {/* Simulation Panel - shown when active */}
-        {isActive && (
+        {/* Simulation Panel - shown when active (DEV only) */}
+        {__DEV__ && isActive && (
           <View>
             <TouchableOpacity
               style={styles.simToggle}
@@ -606,6 +609,7 @@ const HomeScreen: React.FC = () => {
           <Text style={styles.tipCardArrow}>›</Text>
         </View>
       </ScrollView>
+      </SafeAreaView>
     </View>
   );
 };
@@ -614,6 +618,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0B1120',
+  },
+  safeArea: {
+    flex: 1,
   },
   flashOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -625,7 +632,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 60,
+    paddingTop: 16,
     paddingBottom: 20,
   },
 
@@ -652,10 +659,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderRadius: 20,
     borderWidth: 1,
     gap: 6,
+    minHeight: 44,
   },
   modeBadgeIcon: {
     fontSize: 14,
@@ -944,6 +952,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(16, 185, 129, 0.2)',
+    minHeight: 56,
+    justifyContent: 'center',
   },
   dismissBtnIcon: {
     fontSize: 20,
@@ -962,6 +972,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(107, 114, 128, 0.2)',
+    minHeight: 56,
+    justifyContent: 'center',
   },
   falsePositiveBtnIcon: {
     fontSize: 20,

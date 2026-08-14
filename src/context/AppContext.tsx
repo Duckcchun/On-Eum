@@ -40,6 +40,7 @@ export interface ThreatInfo {
 interface AppState {
   isActive: boolean;
   isDetecting: boolean;
+  isLoaded: boolean;
   logs: DetectionLog[];
   stats: { totalDetections: number; activeTime: number; todayDetections: number };
   settings: AppSettings;
@@ -108,6 +109,7 @@ const THREAT_TYPES = {
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isActive, setIsActive] = useState(false);
   const [isDetecting, setIsDetecting] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
   const [currentThreat, setCurrentThreat] = useState<ThreatInfo | null>(null);
   const [logs, setLogs] = useState<DetectionLog[]>([]);
   const [stats, setStats] = useState({ totalDetections: 0, activeTime: 0, todayDetections: 0 });
@@ -248,6 +250,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     } catch (error) {
       console.error('[AppContext] Failed to load persisted data:', error);
+    } finally {
+      setIsLoaded(true);
     }
   };
 
@@ -402,6 +406,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       value={{
         isActive,
         isDetecting,
+        isLoaded,
         currentThreat,
         logs,
         stats,
